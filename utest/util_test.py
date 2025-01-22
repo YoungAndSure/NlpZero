@@ -34,5 +34,10 @@ class UtilTest(unittest.TestCase) :
     similarity = cos_similarity(co_matrix[word_to_id['you']], co_matrix[word_to_id['i']])
     self.assertTrue(np.allclose(similarity, 0.70710677))
 
+  def test_most_similar(self) :
+    text = 'You say goodbye and I say hello.'
+    corpus, word_to_id, id_to_word = preprocess(text)
+    co_matrix = create_co_matrix(corpus, len(id_to_word), window_size=1)
+    most_similar("You", word_to_id, id_to_word, co_matrix)
 
 unittest.main()

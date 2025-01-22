@@ -41,3 +41,26 @@ def cos_similarity(x, y, eps=1e-8) :
   x = x / np.sqrt(np.sum(x ** 2) + 1e-8)
   y = y / np.sqrt(np.sum(y ** 2) + 1e-8)
   return np.dot(x, y)
+
+def most_similar(query, word2id, id2word, word_matrix, top=5) :
+  query = query.lower()
+  if query not in word2id :
+    print("no query in dict:{}".format(query))
+    return
+  
+  query_id = word2id[query]
+  query_vector = word_matrix[query_id]
+
+  vocab_size = len(id2word)
+  similarity = np.zeros(vocab_size)
+  for i in range(vocab_size) :
+    similarity[i] = cos_similarity(query_vector, word_matrix[i])
+
+  count = 0
+  for i in (-1 * similarity).argsort() :
+    if id2word[i] == query :
+      continue
+    print("word:{}, id:{}, vector:{}, similar:{}".format(id2word[i], i, word_matrix[i], similarity[i]))
+    count += 1
+    if count > top :
+      return
