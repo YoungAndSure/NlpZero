@@ -19,8 +19,8 @@ class UtilTest(unittest.TestCase) :
     text = 'You say goodbye and I say hello.'
     corpus, word_to_id, id_to_word = preprocess(text)
     co_matrix = create_co_matrix(corpus, len(id_to_word), window_size=1)
-    self.assertTrue(np.array_equal(co_matrix,[[0,1,0,0,0,0,0],[0,0,1,0,1,1,0],[0,1,0,1,0,0,0],[0,0,1,0,1,0,0],[0,1,0,1,0,0,0],[0,1,0,0,0,0,1],[0,0,0,0,0,1,0]]))
-  
+    self.assertTrue(np.array_equal(co_matrix, [[0,1,0,0,0,0,0],[1,0,1,0,1,1,0],[0,1,0,1,0,0,0],[0,0,1,0,1,0,0],[0,1,0,1,0,0,0],[0,1,0,0,0,0,1],[0,0,0,0,0,1,0]]))
+
   def test_cos_similarity(self) :
     x = np.array([1, 2, 3])
     y = np.array([4, 5, 6])
@@ -39,5 +39,11 @@ class UtilTest(unittest.TestCase) :
     corpus, word_to_id, id_to_word = preprocess(text)
     co_matrix = create_co_matrix(corpus, len(id_to_word), window_size=1)
     most_similar("You", word_to_id, id_to_word, co_matrix)
+
+  def test_ppmi(self) :
+    text = 'You say goodbye and I say hello.'
+    corpus, word_to_id, id_to_word = preprocess(text)
+    co_matrix = create_co_matrix(corpus, len(id_to_word), window_size=1)
+    M = ppmi(co_matrix)
 
 unittest.main()

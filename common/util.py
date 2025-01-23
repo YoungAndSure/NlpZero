@@ -28,7 +28,7 @@ def create_co_matrix(corpus, vocab_size, window_size=1) :
       left_i = index - i
       right_i = index + i
 
-      if left_i > 0 :
+      if left_i >= 0 :
         left_word_id = corpus[left_i]
         co_matrix[id][left_word_id] += 1
       if right_i < corpus_size :
@@ -64,3 +64,22 @@ def most_similar(query, word2id, id2word, word_matrix, top=5) :
     count += 1
     if count > top :
       return
+
+def ppmi(C, verbose=True, eps=1e-8) :
+  M = np.zeros_like(C, dtype=np.float32)
+  S = np.sum(C, axis=0)
+  N = np.sum(C)
+  total = C.shape[0] * C.shape[1]
+  cnt = 0
+
+  for i in range(C.shape[0]) :
+    for j in range(C.shape[1]) :
+      M[i][j] = np.log2((C[i][j] * N) / (S[i] * S[j]) + eps)
+      M[i][j] = max(M[i][j], 0)
+      
+      if verbose :
+        cnt += 1
+        if cnt % 100 == 0:
+          print("processing:{}%".format(cnt / total * 100))
+  
+  return M
