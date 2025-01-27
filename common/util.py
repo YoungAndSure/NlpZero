@@ -105,6 +105,6 @@ def convert_one_hot(input, vec_size) :
   input = input.reshape(-1)
   output = []
   for num in input :
-    o = [0 if i != num else 1 for i in range(1, vec_size + 1)]
+    o = [0 if i != num else 1 for i in range(0, vec_size)]
     output.append(o)
   return np.array(output).reshape(output_shape).tolist()

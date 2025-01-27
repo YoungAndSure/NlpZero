@@ -48,10 +48,10 @@ class UtilTest(unittest.TestCase) :
 
   def test_convert_one_hot(self) :
     test_case = [1,2,3]
-    one_hot = convert_one_hot(test_case, 3)
-    self.assertEqual(one_hot, [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    test_case = [[1,2],[3,4]]
     one_hot = convert_one_hot(test_case, 4)
-    self.assertEqual(one_hot, [[[1, 0, 0, 0], [0, 1, 0, 0]], [[0, 0, 1, 0], [0, 0, 0, 1]]])
+    self.assertEqual(one_hot, [[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+    test_case = [[1,2],[3,4]]
+    one_hot = convert_one_hot(test_case, 5)
+    self.assertEqual(one_hot, [[[0, 1, 0, 0, 0], [0, 0, 1, 0, 0]], [[0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]])
 
 unittest.main()
