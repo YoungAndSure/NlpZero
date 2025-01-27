@@ -46,4 +46,12 @@ class UtilTest(unittest.TestCase) :
     co_matrix = create_co_matrix(corpus, len(id_to_word), window_size=1)
     M = ppmi(co_matrix)
 
+  def test_convert_one_hot(self) :
+    test_case = [1,2,3]
+    one_hot = convert_one_hot(test_case, 3)
+    self.assertEqual(one_hot, [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    test_case = [[1,2],[3,4]]
+    one_hot = convert_one_hot(test_case, 4)
+    self.assertEqual(one_hot, [[[1, 0, 0, 0], [0, 1, 0, 0]], [[0, 0, 1, 0], [0, 0, 0, 1]]])
+
 unittest.main()

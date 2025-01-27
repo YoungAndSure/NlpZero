@@ -83,3 +83,28 @@ def ppmi(C, verbose=True, eps=1e-8) :
           print("processing:{}%".format(cnt / total * 100))
   
   return M
+
+def create_contexts_target(corpus, window_size=1) :
+  targets = corpus[window_size:-window_size]
+  contexts = []
+
+  for idx in range(window_size, len(corpus) - window_size) :
+    cs = []
+    for t in range(-window_size, window_size + 1) :
+      if t == 0 :
+        continue
+      cs.append(corpus[idx + t])
+    contexts.append(cs)
+  return contexts, targets
+
+def convert_one_hot(input, vec_size) :
+  input = np.array(input)
+  input_shape = input.shape
+  output_shape = [i for i in input_shape]
+  output_shape.append(vec_size)
+  input = input.reshape(-1)
+  output = []
+  for num in input :
+    o = [0 if i != num else 1 for i in range(1, vec_size + 1)]
+    output.append(o)
+  return np.array(output).reshape(output_shape).tolist()
