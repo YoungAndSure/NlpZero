@@ -20,8 +20,8 @@ for i in range(len(ori_targets)) :
 
 # one-hot编码
 vocab_size = len(word2id)
-contexts = convert_one_hot(ori_contexts, vocab_size)
-targets = convert_one_hot(ori_targets, vocab_size)
+#contexts = convert_one_hot(ori_contexts, vocab_size)
+#targets = convert_one_hot(ori_targets, vocab_size)
 
 # 初始化模型
 hidden_size = 3
@@ -34,9 +34,9 @@ optimizer.setup(model)
 # 训练
 max_epoch = 100
 for epoch in range(max_epoch) :
-  for i in range(len(targets)) :
-    x = Parameter(np.array(contexts[i])[:, np.newaxis])
-    t = Parameter(np.array(targets[i])[np.newaxis])
+  for i in range(len(ori_targets)) :
+    x = Parameter(np.array(ori_contexts[i]))
+    t = Parameter(np.array(ori_targets[i]))
     y = model.forward(x)
     loss = softmax_cross_entropy_simple(y, t)
     loss.backward()
