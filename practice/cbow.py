@@ -38,6 +38,9 @@ for epoch in range(max_epoch) :
     x = Parameter(np.array(ori_contexts[i]))
     t = Parameter(np.array(ori_targets[i]))
     y = model.forward(x)
+    # 多分类问题是说，有这么多分类，我想知道哪个概率是最高的，
+    # 所以它需要计算所有分类的概率，然后拿出最高概率的，和label计算loss
+    # 所以用的是softmax，某一个分类的概率要和所有其他分类的概率联系起来
     loss = softmax_cross_entropy_simple(y, t)
     loss.backward()
     optimizer.update()
