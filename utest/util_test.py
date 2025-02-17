@@ -54,4 +54,12 @@ class UtilTest(unittest.TestCase) :
     one_hot = convert_one_hot(test_case, 5)
     self.assertEqual(one_hot, [[[0, 1, 0, 0, 0], [0, 0, 1, 0, 0]], [[0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]])
 
+  def test_unigram_sampler(self) :
+    text = 'You say goodbye and I say hello.'
+    corpus, word_to_id, id_to_word = preprocess(text)
+    unigram_sampler = UnigramSampler(corpus, 0.75, 5)
+    targets = np.array([word_to_id['say'], word_to_id['and']])
+    negatives = unigram_sampler.get_negative_sample(targets=targets)
+    self.assertEqual(negatives.shape, (targets.shape[0], 5))
+
 unittest.main()

@@ -18,7 +18,7 @@ ori_contexts, ori_targets = create_contexts_target(corpus=corpus, window_size=1)
 for i in range(len(ori_targets)) :
   print("target:{}, contexts:{},{}".format(id2word[ori_targets[i]], id2word[ori_contexts[i][0]], id2word[ori_contexts[i][1]]))
 
-# one-hot编码
+# one-hot编码, 不用了
 vocab_size = len(word2id)
 #contexts = convert_one_hot(ori_contexts, vocab_size)
 #targets = convert_one_hot(ori_targets, vocab_size)
@@ -31,17 +31,23 @@ model = Cbow(hidden_size, vocab_size)
 optimizer = Momentum(lr=0.1)
 optimizer.setup(model)
 
+# 初始化负样本采样
+unigram_sampler = UnigramSampler(corpus, 0.75, 5)
+
 # 训练
 max_epoch = 100
 for epoch in range(max_epoch) :
   for i in range(len(ori_targets)) :
-    x = Parameter(np.array(ori_contexts[i]))
-    t = Parameter(np.array(ori_targets[i]))
-    y = model.forward(x)
-    # 多分类问题是说，有这么多分类，我想知道哪个概率是最高的，
-    # 所以它需要计算所有分类的概率，然后拿出最高概率的，和label计算loss
-    # 所以用的是softmax，某一个分类的概率要和所有其他分类的概率联系起来
-    loss = softmax_cross_entropy_simple(y, t)
+    x = Parameter(np.array(ori_contexts[i])[:, np.newaxis])
+    positive = Parameter(np.array([ori_targets[i]]))
+    y = model.forward(x, positive)
+    loss = sigmoid_cross_entropy_simple(y, np.ones(1, np.int32))
+
+    negatives = unigram_sampler.get_negative_sample(np.array([ori_targets[i]]))
+    for negative in negatives :
+      y = model.forward(x, negative)
+      loss += sigmoid_cross_entropy_simple(y, np.zeros(1, np.int32))
+
     loss.backward()
     optimizer.update()
     print("epoch:{}, loss:{}".format(epoch, loss.data))

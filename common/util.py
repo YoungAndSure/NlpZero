@@ -1,6 +1,7 @@
 #! python3
 
 import numpy as np
+import collections
 
 def preprocess(text) :
   text = text.lower()
@@ -108,3 +109,25 @@ def convert_one_hot(input, vec_size) :
     o = [0 if i != num else 1 for i in range(0, vec_size)]
     output.append(o)
   return np.array(output).reshape(output_shape).tolist()
+
+class UnigramSampler :
+  def __init__(self, corpus, power, sample_size) :
+    self.sample_size = sample_size
+    counter = collections.Counter(corpus)
+    self.vocab_size = len(counter)
+    self.word_p = np.zeros(self.vocab_size, dtype = np.int32)
+    for i in range(self.vocab_size) :
+      self.word_p[i] = counter[i]
+    self.word_p = np.power(self.word_p, power)
+    self.word_p /= np.sum(self.word_p)
+
+  def get_negative_sample(self, targets) :
+    batch_size = targets.shape[0]
+    results = np.zeros((batch_size, self.sample_size), dtype=np.int32)
+    for i in range(batch_size) :
+      p = self.word_p.copy()
+      target_idx = targets[i]
+      p[target_idx] = 0
+      p /= np.sum(p)
+      results[i, :] = np.random.choice(self.vocab_size, self.sample_size, replace=False, p=p)
+    return results
