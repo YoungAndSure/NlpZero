@@ -30,8 +30,8 @@ class CbowModel(nn.Module):
     self.activator = nn.Sigmoid()
 
   def forward(self, contexts, t):
-    con_emb = self.in_emb(contexts).sum(dim=1)
-    target_emb = self.out_emb(t).squeeze(1).T
+    con_emb = self.in_emb(contexts).sum(dim=1, keepdim=True)
+    target_emb = self.out_emb(t).transpose(2,1)
     y = con_emb.matmul(target_emb)
     return y
 
@@ -51,18 +51,20 @@ loss_fn = nn.BCEWithLogitsLoss()
 
 # 训练
 max_epoch = 10
+batch_size = 1
 for epoch in range(max_epoch) :
   for i in range(len(ori_targets)) :
     x = torch.from_numpy(np.array([ori_contexts[i]]))
-    pt = torch.from_numpy(np.array([[ori_targets[i]]]))
-    y = model.forward(x, pt)
-    loss = loss_fn(y, torch.ones((1, 1)))
 
+    pt = torch.from_numpy(np.array([[ori_targets[i]]]))
     negatives = unigram_sampler.get_negative_sample(np.array([ori_targets[i]]))[0]
-    for negative in negatives :
-      nt = torch.from_numpy(np.array([negative], dtype=np.long))
-      y = model.forward(x, nt)
-      loss += loss_fn(y, torch.zeros((1, 1)))
+    nt = torch.from_numpy(negatives.reshape(batch_size, len(negatives)))
+
+    all_targets = torch.cat([pt, nt], dim=1)
+    labels = torch.cat([torch.ones(1,1), torch.zeros(1, len(negatives))], dim=1).unsqueeze(0)
+
+    y = model.forward(x, all_targets)
+    loss = loss_fn(y, labels)
 
     loss.backward()
     # deone中的update
