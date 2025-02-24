@@ -35,9 +35,12 @@ class CbowModel(nn.Module):
     y = con_emb.matmul(target_emb)
     return y
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using {device} device")
+
 vocab_size = len(word2id)
 hidden_size = 3
-model = CbowModel(vocab_size, hidden_size)
+model = CbowModel(vocab_size, hidden_size).to(device)
 
 # 设置优化器
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -54,14 +57,14 @@ max_epoch = 10
 batch_size = 1
 for epoch in range(max_epoch) :
   for i in range(len(ori_targets)) :
-    x = torch.from_numpy(np.array([ori_contexts[i]]))
+    x = torch.from_numpy(np.array([ori_contexts[i]])).to(device)
 
-    pt = torch.from_numpy(np.array([[ori_targets[i]]]))
+    pt = torch.from_numpy(np.array([[ori_targets[i]]])).to(device)
     negatives = unigram_sampler.get_negative_sample(np.array([ori_targets[i]]))[0]
-    nt = torch.from_numpy(negatives.reshape(batch_size, len(negatives)))
+    nt = torch.from_numpy(negatives.reshape(batch_size, len(negatives))).to(device)
 
     all_targets = torch.cat([pt, nt], dim=1)
-    labels = torch.cat([torch.ones(1,1), torch.zeros(1, len(negatives))], dim=1).unsqueeze(0)
+    labels = torch.cat([torch.ones(1,1), torch.zeros(1, len(negatives))], dim=1).unsqueeze(0).to(device)
 
     y = model.forward(x, all_targets)
     loss = loss_fn(y, labels)
