@@ -9,6 +9,7 @@ except ImportError:
 import pickle
 import numpy as np
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 
 
 url_base = 'https://raw.githubusercontent.com/tomsercu/lstm/master/data/'
@@ -99,15 +100,19 @@ def load_data(data_type='train'):
     return corpus, word_to_id, id_to_word
 
 class PTBDataset(Dataset):
-    def __init__(self, data_type):
+    def __init__(self, data_type, seq_len=1):
+        self.seq_len = seq_len
         self.corpus, self.word_to_id, self.id_to_word = self._process_file(data_type)
     
     def _process_file(self, data_type):
-        # 实现文件解析、序列填充等逻辑（参考文献[4]）
         return load_data(data_type)
     
     def __getitem__(self, index):
-        return self.corpus[index]
+        x_start = index
+        x_end = min(index + self.seq_len, len(self.corpus))
+        t_start = index + 1
+        t_end = min(index + 1 + self.seq_len, len(self.corpus))
+        return self.corpus[x_start : x_end], self.corpus[t_start : t_end]
     
     def getword(self, id) :
         return self.id_to_word[id]
