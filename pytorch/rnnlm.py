@@ -57,10 +57,11 @@ class RnnLm(nn.Module):
         ys = self.softmax(ys)
 
         return ys
+model = RnnLm(len(train_data), seq_len).to(device)
 
 loss_fn = nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-1)
 
-model = RnnLm(len(train_data), seq_len).to(device)
 iter = 0
 for x,t in train_dataloader :
     x,t = x.to(device), t.to(device)
@@ -70,10 +71,14 @@ for x,t in train_dataloader :
         print(f"output shape: BATCH, SEQ_LEN, DIMENTION :{y.shape}")
         print(f"label shape: BATCH, DIMENTION : {t.shape}")
     t_tmp = t.unsqueeze(-1)
+    # y给出了每次词的概率，t_tmp是正确的词，这里取出正确词的概率
     y = y.gather(dim=2, index=t_tmp)
     y = y.squeeze(-1)
-    loss = loss_fn(y, torch.zeros(y.shape).to(device))
+    # 正确词的标签是1
+    loss = loss_fn(y, torch.ones(y.shape).to(device))
     loss.backward()
-
     print("iter:{}, loss:{}".format(iter, loss.data))
+
+    optimizer.step()
+    optimizer.zero_grad()
     iter += 1
