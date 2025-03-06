@@ -37,8 +37,8 @@ class RnnLm(nn.Module):
         x_dimention = 10
         self.embedding = nn.Embedding(vocab_size, x_dimention)
         self.rnn = nn.RNN(input_size=x_dimention, hidden_size=10, num_layers=1, nonlinearity='tanh', batch_first=True)
-        self.affines = [nn.Linear(in_features=x_dimention, out_features=vocab_size) for i in range(seq_len)]
-        self.softmax = nn.Softmax(dim=2)
+        #self.affines = [nn.Linear(in_features=x_dimention, out_features=vocab_size) for i in range(seq_len)]
+        self.affine = nn.Linear(in_features=seq_len*x_dimention, out_features=seq_len * vocab_size)
 
     def forward(self, x):
         embs = self.embedding(x)
@@ -47,20 +47,16 @@ class RnnLm(nn.Module):
         # hs是T个RNN的隐藏层输出，h是最后一个rnn的隐藏层输出
         # 为啥输出两个呢？最后一个隐藏层其实包含了前面所有序列的信息，其实是Encode了
         hs,h_last = self.rnn(embs)
-
-        ys = torch.zeros(BATCH,SEQ_LEN,self.vocab_size).to(device)
-        for i in range(len(hs)) :
-            affine = self.affines[i].to(device)
-            h = hs[:,i,:]
-            y = affine(h)
-            ys[:,i,:] = y
-        ys = self.softmax(ys)
+        BATCH, SEQ_LEN, DIMENTION = hs.shape[0], hs.shape[1], hs.shape[2]
+        ys = self.affine(hs.reshape(BATCH, SEQ_LEN * DIMENTION))
+        ys = ys.reshape(BATCH, SEQ_LEN, self.vocab_size)
 
         return ys
 model = RnnLm(len(train_data), seq_len).to(device)
 
+# 输入是logits值，目标有两种模式，可以是类别的索引
 loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-1)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 iter = 0
 for x,t in train_dataloader :
@@ -70,12 +66,9 @@ for x,t in train_dataloader :
         print(f"input shape: BATCH, DIMENTION :{x.shape}")
         print(f"output shape: BATCH, SEQ_LEN, DIMENTION :{y.shape}")
         print(f"label shape: BATCH, DIMENTION : {t.shape}")
-    t_tmp = t.unsqueeze(-1)
-    # y给出了每次词的概率，t_tmp是正确的词，这里取出正确词的概率
-    y = y.gather(dim=2, index=t_tmp)
-    y = y.squeeze(-1)
-    # 正确词的标签是1
-    loss = loss_fn(y, torch.ones(y.shape).to(device))
+    # reshape(-1, ?) 表示总数据量不变，根据其他维度推断-1处的位置。
+    # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
+    loss = loss_fn(y.reshape(-1, len(train_data)), t.reshape(-1))
     loss.backward()
     print("iter:{}, loss:{}".format(iter, loss.data))
 
