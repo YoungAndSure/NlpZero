@@ -7,7 +7,6 @@ class EasyDataset(Dataset):
       text = 'You say goodbye and I say hello.'
       self.corpus, word2id, id2word = preprocess(text)
       self.contexts, self.targets = create_contexts_target(corpus=self.corpus, window_size=window_size)
-      print(self.contexts.shape, self.targets.shape)
 
       # 初始化负样本采样
       self.unigram_sampler = UnigramSampler(self.corpus, 0.75, 5)

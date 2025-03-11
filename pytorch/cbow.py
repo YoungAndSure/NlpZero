@@ -24,21 +24,12 @@ class CbowModel(nn.Module):
     super().__init__()
     self.in_emb = nn.Embedding(vocab_size, hidden_size)
     self.out_emb = nn.Embedding(vocab_size, hidden_size)
-    nn.init.xavier_uniform_(self.in_emb.weight)
-    nn.init.xavier_uniform_(self.out_emb.weight)
 
-  #def forward(self, contexts, t):
-  #  con_emb = self.in_emb(contexts).sum(dim=1, keepdim=True)
-  #  target_emb = self.out_emb(t).transpose(2,1)
-  #  print(con_emb.shape, target_emb.shape)
-  #  y = con_emb.matmul(target_emb)
-  #  return y
   def forward(self, contexts, t):
-      con_emb = self.in_emb(contexts).sum(dim=1)          # [B, H]
-      target_emb = self.out_emb(t)                         # [B, T, H]
-      y = torch.bmm(con_emb.unsqueeze(1),                 # [B, 1, H]
-                    target_emb.transpose(1, 2))            # [B, H, T]
-      return y.squeeze(1)                                  # [B, T]
+    con_emb = self.in_emb(contexts).sum(dim=1, keepdim=True)
+    target_emb = self.out_emb(t).transpose(2,1)
+    y = con_emb.matmul(target_emb)
+    return y
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} device")
@@ -52,16 +43,15 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
 # 设置损失函数
 # 集成了sigmoid的二元交叉熵误差函数
-#loss_fn = nn.BCEWithLogitsLoss()
-loss_fn = nn.CrossEntropyLoss()
+loss_fn = nn.BCEWithLogitsLoss()
 
 # 训练
-max_epoch = 10
+max_epoch = 100
 for epoch in range(max_epoch) :
   for inputs, targets, labels in train_loader :
     inputs = inputs.to(device)
     targets = targets.to(device)
-    labels = labels.to(device).squeeze(1)
+    labels = labels.to(device)
 
     y = model.forward(inputs, targets)
     loss = loss_fn(y, labels)
