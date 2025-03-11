@@ -9,7 +9,6 @@ except ImportError:
 import pickle
 import numpy as np
 from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
 
 
 url_base = 'https://raw.githubusercontent.com/tomsercu/lstm/master/data/'
