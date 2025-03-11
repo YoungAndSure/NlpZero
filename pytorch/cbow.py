@@ -10,6 +10,7 @@ import torch
 from torch import nn
 from easy_data import EasyDataset
 from torch.utils.data import DataLoader
+from torchviz import make_dot
 
 train_dataset = EasyDataset()
 test_dataset = EasyDataset()
@@ -35,7 +36,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} device")
 
 vocab_size = train_dataset.vocab_size()
-hidden_size = 3
+hidden_size = 10
 model = CbowModel(vocab_size, hidden_size).to(device)
 
 # 设置优化器
@@ -45,6 +46,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 # 集成了sigmoid的二元交叉熵误差函数
 loss_fn = nn.BCEWithLogitsLoss()
 
+first_run=True
 # 训练
 max_epoch = 100
 for epoch in range(max_epoch) :
@@ -55,6 +57,11 @@ for epoch in range(max_epoch) :
 
     y = model.forward(inputs, targets)
     loss = loss_fn(y, labels)
+
+    if (first_run) :
+      vis_graph = make_dot(y, params=dict(model.named_parameters()))
+      vis_graph.render('cbow_model', format='png')  # 输出图像文件
+      first_run=False
 
     loss.backward()
     # deone中的update
