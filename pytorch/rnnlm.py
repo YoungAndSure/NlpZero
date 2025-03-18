@@ -8,11 +8,11 @@ from torch import nn
 from torch.nn import Embedding
 from torch.nn import RNN
 
-seq_len = 10
+seq_len = 50
 
 # 读取PTB数据集
-train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=0.01)
-test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=0.01)
+train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=0.1)
+test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=0.1)
 # 测试集的词汇表是训练集的子集
 vocab_size = train_data.vocab_size()
 
@@ -39,11 +39,11 @@ class RnnLm(nn.Module):
     def __init__(self, vocab_size, seq_len):
         super().__init__()
         self.vocab_size = vocab_size
-        x_dimention = 10
+        x_dimention = 128
+        hidden_size = 256
         self.embedding = nn.Embedding(vocab_size, x_dimention)
-        self.rnn = nn.RNN(input_size=x_dimention, hidden_size=10, num_layers=1, nonlinearity='tanh', batch_first=True)
-        #self.affines = [nn.Linear(in_features=x_dimention, out_features=vocab_size) for i in range(seq_len)]
-        self.affine = nn.Linear(in_features=seq_len*x_dimention, out_features=seq_len * vocab_size)
+        self.rnn = nn.RNN(input_size=x_dimention, hidden_size=hidden_size, num_layers=1, nonlinearity='tanh', batch_first=True)
+        self.affine = nn.Linear(in_features=hidden_size, out_features=vocab_size)
 
     def forward(self, x):
         embs = self.embedding(x)
@@ -53,15 +53,14 @@ class RnnLm(nn.Module):
         # 为啥输出两个呢？最后一个隐藏层其实包含了前面所有序列的信息，其实是Encode了
         hs,h_last = self.rnn(embs)
         BATCH, SEQ_LEN, DIMENTION = hs.shape[0], hs.shape[1], hs.shape[2]
-        ys = self.affine(hs.reshape(BATCH, SEQ_LEN * DIMENTION))
-        ys = ys.reshape(BATCH, SEQ_LEN, self.vocab_size)
-
+        ys = self.affine(hs)
         return ys
+
 model = RnnLm(vocab_size, seq_len).to(device)
 
 # 输入是logits值，目标有两种模式，可以是类别的索引
 loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 max_epoch = 10
 for epoch in range(max_epoch) :
@@ -78,6 +77,8 @@ for epoch in range(max_epoch) :
         # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
         loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
         total_loss += loss.data
+        if (iter % 500 == 0) :
+            print("epoch:{}, iter:{}, loss:{}".format(epoch, iter, total_loss / (iter + 1)))
 
         loss.backward()
 
