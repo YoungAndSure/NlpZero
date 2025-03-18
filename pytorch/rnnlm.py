@@ -1,5 +1,6 @@
 #! python3
 
+import os
 import torch
 from ptb import PTBDataset
 from torch.utils.data import DataLoader
@@ -10,15 +11,17 @@ from torch.nn import RNN
 seq_len = 10
 
 # 读取PTB数据集
-train_data = PTBDataset(data_type = "train", seq_len = seq_len)
-test_data = PTBDataset(data_type = "test", seq_len = seq_len)
+train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=0.01)
+test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=0.01)
 
 batch_size = 8
 
 # Create data loaders.
-train_dataloader = DataLoader(train_data, batch_size=batch_size)
-test_dataloader = DataLoader(test_data, batch_size=batch_size)
+train_dataloader = DataLoader(train_data, batch_size=batch_size, drop_last=True)
+test_dataloader = DataLoader(test_data, batch_size=batch_size, drop_last=True)
 
+print("train data size:", len(train_dataloader))
+print("test data size", len(test_dataloader))
 for x,t in train_dataloader:
     print(f"Shape of train X [BATCH, H]: {x.shape}")
     break
@@ -59,19 +62,38 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 iter = 0
-for x,t in train_dataloader :
-    x,t = x.to(device), t.to(device)
-    y = model.forward(x)
-    if (iter == 0) :
-        print(f"input shape: BATCH, DIMENTION :{x.shape}")
-        print(f"output shape: BATCH, SEQ_LEN, DIMENTION :{y.shape}")
-        print(f"label shape: BATCH, DIMENTION : {t.shape}")
-    # reshape(-1, ?) 表示总数据量不变，根据其他维度推断-1处的位置。
-    # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
-    loss = loss_fn(y.reshape(-1, len(train_data)), t.reshape(-1))
-    loss.backward()
-    print("iter:{}, loss:{}".format(iter, loss.data))
+max_epoch = 10
+for epoch in range(max_epoch) :
+    for x,t in train_dataloader :
+        x,t = x.to(device), t.to(device)
+        y = model.forward(x)
+        if (iter == 0) :
+            print(f"input shape: BATCH, DIMENTION :{x.shape}")
+            print(f"output shape: BATCH, SEQ_LEN, DIMENTION :{y.shape}")
+            print(f"label shape: BATCH, DIMENTION : {t.shape}")
+        # reshape(-1, ?) 表示总数据量不变，根据其他维度推断-1处的位置。
+        # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
+        loss = loss_fn(y.reshape(-1, len(train_data)), t.reshape(-1))
+        loss.backward()
+        print("epoch:{}, iter:{}, loss:{}".format(epoch, iter, loss.data))
 
-    optimizer.step()
-    optimizer.zero_grad()
-    iter += 1
+        optimizer.step()
+        optimizer.zero_grad()
+        iter += 1
+
+with torch.no_grad() :
+    total_loss = 0.0
+    for x,t in test_dataloader :
+        x,t = x.to(device), t.to(device)
+        y = model.forward(x)
+        loss = loss_fn(y.reshape(-1, len(train_data)), t.reshape(-1))
+        print("test loss:{}".format(loss.data))
+        total_loss += loss.data
+    avg_loss = total_loss / len(test_dataloader)
+    print("test avg_loss:{}".format(avg_loss))
+
+model_file_name = "rnnlm.pth"
+if os.path.isfile(model_file_name):
+    os.remove(model_file_name)
+    print(f"file {model_file_name} deleted")
+torch.save(model.state_dict(), model_file_name)

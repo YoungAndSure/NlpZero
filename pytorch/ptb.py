@@ -74,7 +74,7 @@ def load_vocab():
     return word_to_id, id_to_word
 
 
-def load_data(data_type='train'):
+def load_data(data_type='train', cutoff_rate=1.0):
     '''
         :param data_type: 数据的种类：'train' or 'test' or 'valid (val)'
         :return:
@@ -86,6 +86,7 @@ def load_data(data_type='train'):
 
     if os.path.exists(save_path):
         corpus = np.load(save_path)
+        corpus = corpus[:int(corpus.shape[0] * cutoff_rate)]
         return corpus, word_to_id, id_to_word
 
     file_name = key_file[data_type]
@@ -96,15 +97,16 @@ def load_data(data_type='train'):
     corpus = np.array([word_to_id[w] for w in words])
 
     np.save(save_path, corpus)
+    corpus = corpus[:int(corpus.shape[0] * cutoff_rate)]
     return corpus, word_to_id, id_to_word
 
 class PTBDataset(Dataset):
-    def __init__(self, data_type, seq_len=1):
+    def __init__(self, data_type, seq_len=1, cutoff_rate=1.0):
         self.seq_len = seq_len
-        self.corpus, self.word_to_id, self.id_to_word = self._process_file(data_type)
+        self.corpus, self.word_to_id, self.id_to_word = self._process_file(data_type, cutoff_rate)
     
-    def _process_file(self, data_type):
-        return load_data(data_type)
+    def _process_file(self, data_type, cutoff_rate):
+        return load_data(data_type, cutoff_rate)
     
     def __getitem__(self, index):
         x_start = index
@@ -117,4 +119,5 @@ class PTBDataset(Dataset):
         return self.id_to_word[id]
 
     def __len__(self):
-        return len(self.corpus)
+        # 不然到最后会因为x和t数量不一致而挂掉
+        return len(self.corpus) - self.seq_len
