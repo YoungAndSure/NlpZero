@@ -13,6 +13,8 @@ seq_len = 10
 # 读取PTB数据集
 train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=0.01)
 test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=0.01)
+# 测试集的词汇表是训练集的子集
+vocab_size = train_data.vocab_size()
 
 batch_size = 8
 
@@ -55,7 +57,7 @@ class RnnLm(nn.Module):
         ys = ys.reshape(BATCH, SEQ_LEN, self.vocab_size)
 
         return ys
-model = RnnLm(len(train_data), seq_len).to(device)
+model = RnnLm(vocab_size, seq_len).to(device)
 
 # 输入是logits值，目标有两种模式，可以是类别的索引
 loss_fn = nn.CrossEntropyLoss()
@@ -73,7 +75,7 @@ for epoch in range(max_epoch) :
             print(f"label shape: BATCH, DIMENTION : {t.shape}")
         # reshape(-1, ?) 表示总数据量不变，根据其他维度推断-1处的位置。
         # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
-        loss = loss_fn(y.reshape(-1, len(train_data)), t.reshape(-1))
+        loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
         loss.backward()
         print("epoch:{}, iter:{}, loss:{}".format(epoch, iter, loss.data))
 
@@ -86,8 +88,7 @@ with torch.no_grad() :
     for x,t in test_dataloader :
         x,t = x.to(device), t.to(device)
         y = model.forward(x)
-        loss = loss_fn(y.reshape(-1, len(train_data)), t.reshape(-1))
-        print("test loss:{}".format(loss.data))
+        loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
         total_loss += loss.data
     avg_loss = total_loss / len(test_dataloader)
     print("test avg_loss:{}".format(avg_loss))

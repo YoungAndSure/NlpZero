@@ -121,3 +121,6 @@ class PTBDataset(Dataset):
     def __len__(self):
         # 不然到最后会因为x和t数量不一致而挂掉
         return len(self.corpus) - self.seq_len
+    
+    def vocab_size(self) :
+        return len(self.word_to_id)
