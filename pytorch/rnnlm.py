@@ -63,25 +63,28 @@ model = RnnLm(vocab_size, seq_len).to(device)
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-iter = 0
 max_epoch = 10
 for epoch in range(max_epoch) :
+    total_loss = 0.0
+    iter = 0
     for x,t in train_dataloader :
         x,t = x.to(device), t.to(device)
         y = model.forward(x)
-        if (iter == 0) :
+        if (epoch == 0 and iter == 0) :
             print(f"input shape: BATCH, DIMENTION :{x.shape}")
             print(f"output shape: BATCH, SEQ_LEN, DIMENTION :{y.shape}")
             print(f"label shape: BATCH, DIMENTION : {t.shape}")
         # reshape(-1, ?) 表示总数据量不变，根据其他维度推断-1处的位置。
         # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
         loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
+        total_loss += loss.data
+
         loss.backward()
-        print("epoch:{}, iter:{}, loss:{}".format(epoch, iter, loss.data))
 
         optimizer.step()
         optimizer.zero_grad()
         iter += 1
+    print("epoch:{}, loss:{}".format(epoch, total_loss / iter))
 
 with torch.no_grad() :
     total_loss = 0.0
