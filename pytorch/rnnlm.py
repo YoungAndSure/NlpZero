@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import Embedding
 from torch.nn import RNN
+#from torch.profiler import profile, record_function, ProfilerActivity
 
 seq_len = 50
 
@@ -62,6 +63,7 @@ model = RnnLm(vocab_size, seq_len).to(device)
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+#with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
 max_epoch = 10
 for epoch in range(max_epoch) :
     total_loss = 0.0
@@ -86,6 +88,7 @@ for epoch in range(max_epoch) :
         optimizer.zero_grad()
         iter += 1
     print("epoch:{}, loss:{}".format(epoch, total_loss / iter))
+#print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
 with torch.no_grad() :
     total_loss = 0.0
