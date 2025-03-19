@@ -106,9 +106,3 @@ with torch.no_grad() :
         total_loss += loss.data
     avg_loss = total_loss / len(test_dataloader)
     print("test avg_loss:{}".format(avg_loss))
-
-model_file_name = "rnnlm.pth"
-if os.path.isfile(model_file_name):
-    os.remove(model_file_name)
-    print(f"file {model_file_name} deleted")
-torch.save(model.state_dict(), model_file_name)
