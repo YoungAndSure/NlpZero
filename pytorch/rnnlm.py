@@ -49,6 +49,7 @@ class RnnLm(nn.Module):
         self.embedding = nn.Embedding(vocab_size, x_dimention)
         self.rnn = nn.RNN(input_size=x_dimention, hidden_size=hidden_size, num_layers=1, nonlinearity='tanh', batch_first=True)
         self.affine = nn.Linear(in_features=hidden_size, out_features=vocab_size)
+        self.h_last = None
 
     def forward(self, x):
         embs = self.embedding(x)
@@ -56,7 +57,9 @@ class RnnLm(nn.Module):
         # 已经设置了batch_first
         # hs是T个RNN的隐藏层输出，h是最后一个rnn的隐藏层输出
         # 为啥输出两个呢？最后一个隐藏层其实包含了前面所有序列的信息，其实是Encode了
-        hs,h_last = self.rnn(embs)
+        if self.h_last is not None:
+            self.h_last = self.h_last.detach()
+        hs,self.h_last = self.rnn(embs) if self.h_last is None else self.rnn(embs, self.h_last)
         BATCH, SEQ_LEN, DIMENTION = hs.shape[0], hs.shape[1], hs.shape[2]
         ys = self.affine(hs)
         return ys
