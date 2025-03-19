@@ -9,7 +9,7 @@ except ImportError:
 import pickle
 import numpy as np
 from torch.utils.data import Dataset
-
+from torch.utils.data import BatchSampler
 
 url_base = 'https://raw.githubusercontent.com/tomsercu/lstm/master/data/'
 key_file = {
@@ -109,10 +109,12 @@ class PTBDataset(Dataset):
         return load_data(data_type, cutoff_rate)
     
     def __getitem__(self, index):
-        x_start = index
-        x_end = min(index + self.seq_len, len(self.corpus))
-        t_start = index + 1
-        t_end = min(index + 1 + self.seq_len, len(self.corpus))
+        x_start = index * self.seq_len
+        x_end = x_start + self.seq_len
+
+        t_start = x_start + 1
+        t_end = t_start + self.seq_len
+
         return self.corpus[x_start : x_end], self.corpus[t_start : t_end]
     
     def getword(self, id) :
@@ -120,7 +122,23 @@ class PTBDataset(Dataset):
 
     def __len__(self):
         # 不然到最后会因为x和t数量不一致而挂掉
-        return len(self.corpus) - self.seq_len
+        return len(self.corpus) // self.seq_len
     
     def vocab_size(self) :
         return len(self.word_to_id)
+
+class SequentialBatchSampler(BatchSampler):
+    def __init__(self, dataset, batch_size):
+        self.dataset = dataset
+        self.batch_size = batch_size
+
+    def __iter__(self):
+        num_batches = len(self.dataset) // self.batch_size
+        for i in range(num_batches):
+            batch_index = []
+            for j in range(self.batch_size) :
+                batch_index.append(i + j * num_batches)
+            yield batch_index
+
+    def __len__(self):
+        return len(self.dataset) // self.batch_size

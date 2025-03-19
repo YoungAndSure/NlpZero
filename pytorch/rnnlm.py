@@ -2,7 +2,7 @@
 
 import os
 import torch
-from ptb import PTBDataset
+from ptb import PTBDataset, SequentialBatchSampler
 from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import Embedding
@@ -10,21 +10,25 @@ from torch.nn import RNN
 #from torch.profiler import profile, record_function, ProfilerActivity
 
 seq_len = 50
+batch_size = 8
 
 # 读取PTB数据集
-train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=0.1)
-test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=0.1)
+train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=1)
+test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=1)
 # 测试集的词汇表是训练集的子集
 vocab_size = train_data.vocab_size()
 
-batch_size = 8
-
 # Create data loaders.
-train_dataloader = DataLoader(train_data, batch_size=batch_size, drop_last=True)
-test_dataloader = DataLoader(test_data, batch_size=batch_size, drop_last=True)
+train_batch_sampler = SequentialBatchSampler(train_data, batch_size)
+train_dataloader = DataLoader(train_data,
+                              batch_sampler=train_batch_sampler)
+test_batch_sampler = SequentialBatchSampler(test_data, batch_size)
+test_dataloader = DataLoader(test_data,
+                             batch_sampler=test_batch_sampler)
 
-print("train data size:", len(train_dataloader))
-print("test data size", len(test_dataloader))
+print("vocab_size:", vocab_size)
+print("train data size:", len(train_dataloader) * batch_size)
+print("test data size", len(test_dataloader) * batch_size)
 for x,t in train_dataloader:
     print(f"Shape of train X [BATCH, H]: {x.shape}")
     break
@@ -64,7 +68,7 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 #with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
-max_epoch = 10
+max_epoch = 20
 for epoch in range(max_epoch) :
     total_loss = 0.0
     iter = 0
