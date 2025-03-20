@@ -110,6 +110,8 @@ if retrain_and_dump :
         total_loss = 0.0
         total_token = 0.0
         iter = 0
+
+        model.reset_state() # follow deepseek's advice, really good
         for x,t in train_dataloader :
             x,t = x.to(device), t.to(device)
             y = model.forward(x)
@@ -144,6 +146,7 @@ model.eval()
 with torch.no_grad() :
     total_loss = 0.0
     total_token = 0.0
+    model.reset_state()
     for x,t in test_dataloader :
         x,t = x.to(device), t.to(device)
         y = model.forward(x)
