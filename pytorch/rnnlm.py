@@ -6,6 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import os
 from common.util import CostRecorder
 import torch
+import numpy as np
 from ptb import PTBDataset, SequentialBatchSampler
 from torch.utils.data import DataLoader
 from torch import nn
@@ -88,7 +89,7 @@ class RnnLm(nn.Module):
 model = RnnLm(vocab_size, seq_len).to(device)
 
 # 输入是logits值，目标有两种模式，可以是类别的索引
-loss_fn = nn.CrossEntropyLoss()
+loss_fn = nn.CrossEntropyLoss(reduction='mean')
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 recorder.record("prepare")
@@ -97,6 +98,7 @@ recorder.record("prepare")
 if True :
     for epoch in range(max_epoch) :
         total_loss = 0.0
+        total_token = 0.0
         iter = 0
         for x,t in train_dataloader :
             x,t = x.to(device), t.to(device)
@@ -107,17 +109,18 @@ if True :
                 print(f"label shape: BATCH, DIMENTION : {t.shape}")
             # reshape(-1, ?) 表示总数据量不变，根据其他维度推断-1处的位置。
             # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
+            # 这里是把所有batch拍平之后，求的batch_size * seq_len的平均损失
             loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
-            total_loss += loss.data
-            if (iter % 500 == 0) :
-                print("epoch:{}, iter:{}, loss:{}".format(epoch, iter, total_loss / (iter + 1)))
+
+            total_loss += loss.detach().item() * x.shape[0] * x.shape[1]
+            total_token += x.shape[0] * x.shape[1]
 
             loss.backward()
 
             optimizer.step()
             optimizer.zero_grad()
             iter += 1
-        print("epoch:{}, loss:{}".format(epoch, total_loss / iter))
+        print("epoch:{}, loss:{}".format(epoch, total_loss / total_token))
 #prof.export_chrome_trace("rnnlm_profile.json")
 #print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
@@ -125,13 +128,16 @@ recorder.record("train")
 
 with torch.no_grad() :
     total_loss = 0.0
+    total_token = 0.0
     for x,t in test_dataloader :
         x,t = x.to(device), t.to(device)
         y = model.forward(x)
         loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
-        total_loss += loss.data
-    avg_loss = total_loss / len(test_dataloader)
-    print("test avg_loss:{}".format(avg_loss))
+
+        total_loss += loss.detach().item() * x.shape[0] * x.shape[1]
+        total_token += x.shape[0] * x.shape[1]
+    perplexity = np.exp(total_loss / total_token)
+    print("test loss:{}, perplexity:{}".format(total_loss/total_token, perplexity))
 
 recorder.record("test")
 recorder.print_record()
