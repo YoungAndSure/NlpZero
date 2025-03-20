@@ -2,6 +2,7 @@
 
 import numpy as np
 import collections
+import time
 
 def preprocess(text) :
   text = text.lower()
@@ -131,3 +132,24 @@ class UnigramSampler :
       p /= np.sum(p)
       results[i, :] = np.random.choice(self.vocab_size, self.sample_size, replace=False, p=p)
     return results
+
+class CostRecorder :
+  def __init__(self) :
+    self.last_time = time.perf_counter()
+    self.cost = []
+    self.name = []
+
+  def record(self, interval_name) :
+    cur_time = time.perf_counter()
+    self.cost.append(cur_time - self.last_time)
+    self.last_time = cur_time
+
+    self.name.append(interval_name)
+
+  def print_record(self) :
+    print()
+    print("-----------cost-----------")
+    for i in range(len(self.cost)) :
+      print("{} : {:.3f} ms".format(self.name[i], self.cost[i] * 1000))
+    print("total : {:.3f} ms".format(sum(self.cost) * 1000))
+    print("-----------end-----------")

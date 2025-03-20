@@ -1,6 +1,10 @@
 #! python3
 
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 import os
+from common.util import CostRecorder
 import torch
 from ptb import PTBDataset, SequentialBatchSampler
 from torch.utils.data import DataLoader
@@ -13,11 +17,15 @@ seq_len = 50
 batch_size = 8
 max_epoch = 10
 
+recorder = CostRecorder()
+
 # 读取PTB数据集
 train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=1)
 test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=1)
 # 测试集的词汇表是训练集的子集
 vocab_size = train_data.vocab_size()
+
+recorder.record("dataset")
 
 # Create data loaders.
 train_batch_sampler = SequentialBatchSampler(train_data, batch_size)
@@ -26,6 +34,8 @@ train_dataloader = DataLoader(train_data,
 test_batch_sampler = SequentialBatchSampler(test_data, batch_size)
 test_dataloader = DataLoader(test_data,
                              batch_sampler=test_batch_sampler)
+
+recorder.record("dataload")
 
 print("vocab_size:", vocab_size)
 print("train data size:", len(train_dataloader) * batch_size)
@@ -70,6 +80,8 @@ model = RnnLm(vocab_size, seq_len).to(device)
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+recorder.record("prepare")
+
 #with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
 if True :
     for epoch in range(max_epoch) :
@@ -98,6 +110,8 @@ if True :
 #prof.export_chrome_trace("rnnlm_profile.json")
 #print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
+recorder.record("train")
+
 with torch.no_grad() :
     total_loss = 0.0
     for x,t in test_dataloader :
@@ -107,3 +121,6 @@ with torch.no_grad() :
         total_loss += loss.data
     avg_loss = total_loss / len(test_dataloader)
     print("test avg_loss:{}".format(avg_loss))
+
+recorder.record("test")
+recorder.print_record()
