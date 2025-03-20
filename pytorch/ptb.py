@@ -129,6 +129,16 @@ class PTBDataset(Dataset):
 
     def get_dict(self) :
         return self.word_to_id, self.id_to_word
+    
+    def get_random_ids(self, length=20) :
+        start = np.random.randint(0, len(self.corpus) - 20)
+        # 24 is <eof>
+        while self.corpus[start] != 24 :
+            start += 1
+        start += 1
+        # return answer, so +1
+        ids = self.corpus[start : start + length + 1]
+        return ids
 
 class SequentialBatchSampler(BatchSampler):
     def __init__(self, dataset, batch_size):

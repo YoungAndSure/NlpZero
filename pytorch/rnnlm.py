@@ -160,20 +160,28 @@ recorder.print_record()
 with torch.no_grad() :
     model.reset_state()
 
-    text = 'You say thanks and I say'
-    text = text.lower()
-    text = text.replace('.', ' .')
-    words = text.split(' ')
     word_to_id, id_to_word = train_data.get_dict()
-    x = [word_to_id[word] for word in words]
-    x = torch.tensor(x)
-    x = x.unsqueeze(0)
+
+    inputs = []
+    ans = []
+    for i in range(10) :
+        ids = train_data.get_random_ids(length=10)
+        inputs.append(ids[:-1])
+        ans.append(ids)
+
+    x = torch.tensor(np.array(inputs))
     y = model.forward(x.to(device))
-    last_word = y.reshape(-1, vocab_size)[-1]
-    last_word = nn.Softmax(dim=0)(last_word)
-    value, idx = last_word.max(dim=0)
-    predict_id = idx.detach().item()
+    last_word = y[:,-1,:]
+    last_word = nn.Softmax(dim=1)(last_word)
+    value, idx = last_word.max(dim=1)
 
     print("\n----------manual test--------")
-    print(text + " " + id_to_word[predict_id])
+    for i in range(10) :
+        for word in ans[i] :
+            print(id_to_word[word], end=' ')
+        print()
+        for word in inputs[i] :
+            print(id_to_word[word], end=' ')
+        print("[{}]".format(id_to_word[idx[i].item()]))
+        print()
     print("-----------end------------")
