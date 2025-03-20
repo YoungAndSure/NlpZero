@@ -12,6 +12,7 @@ from torch import nn
 from torch.nn import Embedding
 from torch.nn import RNN
 from torch.profiler import profile, record_function, ProfilerActivity
+from torch.nn import init
 
 seq_len = 50
 batch_size = 8
@@ -56,9 +57,19 @@ class RnnLm(nn.Module):
         self.vocab_size = vocab_size
         x_dimention = 128
         hidden_size = 256
+
         self.embedding = nn.Embedding(vocab_size, x_dimention)
+
         self.rnn = nn.RNN(input_size=x_dimention, hidden_size=hidden_size, num_layers=1, nonlinearity='tanh', batch_first=True)
+        for name, param in self.rnn.named_parameters():
+            if 'weight_ih' in name:  # 输入到隐藏的权重
+                init.xavier_uniform_(param)
+            elif 'weight_hh' in name: # 隐藏到隐藏的权重
+                init.orthogonal_(param)
+
         self.affine = nn.Linear(in_features=hidden_size, out_features=vocab_size)
+        init.xavier_uniform_(self.affine.weight)
+
         self.h_last = None
 
     def forward(self, x):
