@@ -7,10 +7,11 @@ from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import Embedding
 from torch.nn import RNN
-#from torch.profiler import profile, record_function, ProfilerActivity
+from torch.profiler import profile, record_function, ProfilerActivity
 
 seq_len = 50
 batch_size = 8
+max_epoch = 10
 
 # 读取PTB数据集
 train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=1)
@@ -38,7 +39,6 @@ for x,t in test_dataloader:
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} device")
-
 
 class RnnLm(nn.Module):
     def __init__(self, vocab_size, seq_len):
@@ -71,30 +71,31 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 #with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
-max_epoch = 20
-for epoch in range(max_epoch) :
-    total_loss = 0.0
-    iter = 0
-    for x,t in train_dataloader :
-        x,t = x.to(device), t.to(device)
-        y = model.forward(x)
-        if (epoch == 0 and iter == 0) :
-            print(f"input shape: BATCH, DIMENTION :{x.shape}")
-            print(f"output shape: BATCH, SEQ_LEN, DIMENTION :{y.shape}")
-            print(f"label shape: BATCH, DIMENTION : {t.shape}")
-        # reshape(-1, ?) 表示总数据量不变，根据其他维度推断-1处的位置。
-        # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
-        loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
-        total_loss += loss.data
-        if (iter % 500 == 0) :
-            print("epoch:{}, iter:{}, loss:{}".format(epoch, iter, total_loss / (iter + 1)))
+if True :
+    for epoch in range(max_epoch) :
+        total_loss = 0.0
+        iter = 0
+        for x,t in train_dataloader :
+            x,t = x.to(device), t.to(device)
+            y = model.forward(x)
+            if (epoch == 0 and iter == 0) :
+                print(f"input shape: BATCH, DIMENTION :{x.shape}")
+                print(f"output shape: BATCH, SEQ_LEN, DIMENTION :{y.shape}")
+                print(f"label shape: BATCH, DIMENTION : {t.shape}")
+            # reshape(-1, ?) 表示总数据量不变，根据其他维度推断-1处的位置。
+            # 所以这里是把(8, 10, 929589) reshape成了(80, 929589)
+            loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
+            total_loss += loss.data
+            if (iter % 500 == 0) :
+                print("epoch:{}, iter:{}, loss:{}".format(epoch, iter, total_loss / (iter + 1)))
 
-        loss.backward()
+            loss.backward()
 
-        optimizer.step()
-        optimizer.zero_grad()
-        iter += 1
-    print("epoch:{}, loss:{}".format(epoch, total_loss / iter))
+            optimizer.step()
+            optimizer.zero_grad()
+            iter += 1
+        print("epoch:{}, loss:{}".format(epoch, total_loss / iter))
+#prof.export_chrome_trace("rnnlm_profile.json")
 #print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
 with torch.no_grad() :
