@@ -4,7 +4,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import os
-from common.util import CostRecorder
+from common.util import CostRecorder, save_model
 import torch
 import numpy as np
 from ptb import PTBDataset, SequentialBatchSampler
@@ -15,10 +15,14 @@ from torch.nn import RNN
 from torch.profiler import profile, record_function, ProfilerActivity
 from torch.nn import init
 
+# config:
+retrain_and_dump=False
+file_name = "rnnlm.pth"
 seq_len = 50
 batch_size = 8
 max_epoch = 10
 
+# start
 recorder = CostRecorder()
 
 # 读取PTB数据集
@@ -39,6 +43,8 @@ test_dataloader = DataLoader(test_data,
 
 recorder.record("dataload")
 
+print()
+print("---------dataset message---------")
 print("vocab_size:", vocab_size)
 print("train data size:", len(train_dataloader) * batch_size)
 print("test data size", len(test_dataloader) * batch_size)
@@ -48,9 +54,8 @@ for x,t in train_dataloader:
 for x,t in test_dataloader:
     print(f"Shape of test X [BATCH, H]: {x.shape}")
     break
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using {device} device")
+print("--------------end--------------")
+print()
 
 class RnnLm(nn.Module):
     def __init__(self, vocab_size, seq_len):
@@ -85,7 +90,12 @@ class RnnLm(nn.Module):
         BATCH, SEQ_LEN, DIMENTION = hs.shape[0], hs.shape[1], hs.shape[2]
         ys = self.affine(hs)
         return ys
+    
+    # 测试时别忘了reset，不然训练集和测试数据shape不符，隐藏层报错
+    def reset_state(self) :
+        self.h_last = None
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
 model = RnnLm(vocab_size, seq_len).to(device)
 
 # 输入是logits值，目标有两种模式，可以是类别的索引
@@ -95,7 +105,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 recorder.record("prepare")
 
 #with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
-if True :
+if retrain_and_dump :
     for epoch in range(max_epoch) :
         total_loss = 0.0
         total_token = 0.0
@@ -121,11 +131,16 @@ if True :
             optimizer.zero_grad()
             iter += 1
         print("epoch:{}, loss:{}".format(epoch, total_loss / total_token))
+    save_model(model, file_name)
 #prof.export_chrome_trace("rnnlm_profile.json")
 #print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
 recorder.record("train")
 
+if not retrain_and_dump :
+    model.load_state_dict(torch.load(file_name))  
+
+model.eval()
 with torch.no_grad() :
     total_loss = 0.0
     total_token = 0.0
@@ -141,3 +156,24 @@ with torch.no_grad() :
 
 recorder.record("test")
 recorder.print_record()
+
+with torch.no_grad() :
+    model.reset_state()
+
+    text = 'You say thanks and I say'
+    text = text.lower()
+    text = text.replace('.', ' .')
+    words = text.split(' ')
+    word_to_id, id_to_word = train_data.get_dict()
+    x = [word_to_id[word] for word in words]
+    x = torch.tensor(x)
+    x = x.unsqueeze(0)
+    y = model.forward(x.to(device))
+    last_word = y.reshape(-1, vocab_size)[-1]
+    last_word = nn.Softmax(dim=0)(last_word)
+    value, idx = last_word.max(dim=0)
+    predict_id = idx.detach().item()
+
+    print("\n----------manual test--------")
+    print(text + " " + id_to_word[predict_id])
+    print("-----------end------------")

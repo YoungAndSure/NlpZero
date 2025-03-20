@@ -3,6 +3,9 @@
 import numpy as np
 import collections
 import time
+from torch import nn
+import os
+import torch
 
 def preprocess(text) :
   text = text.lower()
@@ -153,3 +156,14 @@ class CostRecorder :
       print("{} : {:.3f} ms".format(self.name[i], self.cost[i] * 1000))
     print("total : {:.3f} ms".format(sum(self.cost) * 1000))
     print("-----------end-----------")
+
+def save_model(model: nn.Module, save_path: str, force_override=True):
+    if os.path.exists(save_path):
+        if force_override:
+            os.remove(save_path)
+            print(f"deleted: {save_path}")
+        else:
+            raise FileExistsError(f"file exist: {save_path}")
+    
+    torch.save(model.state_dict(), save_path)
+    print(f"model saved: {save_path}")

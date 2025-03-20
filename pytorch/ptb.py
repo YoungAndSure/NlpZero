@@ -117,15 +117,18 @@ class PTBDataset(Dataset):
 
         return self.corpus[x_start : x_end], self.corpus[t_start : t_end]
     
-    def getword(self, id) :
-        return self.id_to_word[id]
-
     def __len__(self):
         # 不然到最后会因为x和t数量不一致而挂掉
         return len(self.corpus) // self.seq_len
     
     def vocab_size(self) :
         return len(self.word_to_id)
+
+    def getword(self, id) :
+        return self.id_to_word[id]
+
+    def get_dict(self) :
+        return self.word_to_id, self.id_to_word
 
 class SequentialBatchSampler(BatchSampler):
     def __init__(self, dataset, batch_size):
