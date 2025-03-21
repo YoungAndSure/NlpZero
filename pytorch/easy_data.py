@@ -27,3 +27,29 @@ class EasyDataset(Dataset):
 
     def vocab_size(self) :
        return len(self.corpus)
+
+class HelloDataset(Dataset):
+    def __init__(self, seq_len=6):
+      text = 'You say goodbye and I say hello'
+      corpus, self.word2id, self.id2word = preprocess(text)
+      self.corpus = np.array(corpus)
+      self.seq_len=seq_len
+
+    def __getitem__(self, index):
+      start = index * self.seq_len
+      end = (index + 1) * self.seq_len
+      x = self.corpus[start : end]
+      t = self.corpus[start + 1 : end + 1]
+      return x, t
+    
+    def __len__(self):
+        return 1
+
+    def vocab_size(self) :
+       return len(self.corpus)
+
+    def get_dict(self) :
+        return self.word2id, self.id2word
+
+    def get_random_ids(self, length) :
+      return self.corpus

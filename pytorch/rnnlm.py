@@ -14,20 +14,24 @@ from torch.nn import Embedding
 from torch.nn import RNN
 from torch.profiler import profile, record_function, ProfilerActivity
 from torch.nn import init
+from easy_data import HelloDataset
 
 # config:
-retrain_and_dump=True
-file_name = "rnnlm.pth"
-seq_len = 50
-batch_size = 8
+retrain_and_dump=False
+use_ptb=True
+seq_len = 50 if use_ptb else 6
+batch_size = 8 if use_ptb else 1
 max_epoch = 10
+file_name = "rnnlm.pth" if use_ptb else "hello.pth"
+manual_test_case_size = 10 if use_ptb else 1
 
 # start
 recorder = CostRecorder()
 
 # 读取PTB数据集
-train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=1)
-test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=1)
+train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=1) if use_ptb else HelloDataset()
+test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=1) if use_ptb else HelloDataset()
+
 # 测试集的词汇表是训练集的子集
 vocab_size = train_data.vocab_size()
 
@@ -168,7 +172,7 @@ with torch.no_grad() :
 
     inputs = []
     ans = []
-    for i in range(10) :
+    for i in range(manual_test_case_size) :
         ids = train_data.get_random_ids(length=10)
         inputs.append(ids[:-1])
         ans.append(ids)
@@ -180,7 +184,7 @@ with torch.no_grad() :
     value, idx = last_word.max(dim=1)
 
     print("\n----------manual test--------")
-    for i in range(10) :
+    for i in range(manual_test_case_size) :
         for word in ans[i] :
             print(id_to_word[word], end=' ')
         print()
