@@ -16,7 +16,7 @@ from torch.profiler import profile, record_function, ProfilerActivity
 from torch.nn import init
 
 # config:
-retrain_and_dump=False
+retrain_and_dump=True
 file_name = "rnnlm.pth"
 seq_len = 50
 batch_size = 8
@@ -132,7 +132,8 @@ if retrain_and_dump :
             optimizer.step()
             optimizer.zero_grad()
             iter += 1
-        print("epoch:{}, loss:{}".format(epoch, total_loss / total_token))
+        perplexity = np.exp(total_loss / total_token)
+        print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}".format(epoch, total_loss / total_token, perplexity))
     save_model(model, file_name)
 #prof.export_chrome_trace("rnnlm_profile.json")
 #print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
@@ -155,7 +156,7 @@ with torch.no_grad() :
         total_loss += loss.detach().item() * x.shape[0] * x.shape[1]
         total_token += x.shape[0] * x.shape[1]
     perplexity = np.exp(total_loss / total_token)
-    print("test loss:{}, perplexity:{}".format(total_loss/total_token, perplexity))
+    print("test loss:{:.3f}, perplexity:{:.3f}".format(total_loss/total_token, perplexity))
 
 recorder.record("test")
 recorder.print_record()
