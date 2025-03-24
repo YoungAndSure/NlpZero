@@ -15,15 +15,19 @@ from torch.nn import RNN
 from torch.profiler import profile, record_function, ProfilerActivity
 from torch.nn import init
 from easy_data import HelloDataset
+from torch.utils.tensorboard import SummaryWriter
 
 # config:
-retrain_and_dump=False
+retrain_and_dump=True
 use_ptb=True
 seq_len = 50 if use_ptb else 6
 batch_size = 8 if use_ptb else 1
 max_epoch = 10
 file_name = "rnnlm.pth" if use_ptb else "hello.pth"
 manual_test_case_size = 10 if use_ptb else 1
+write_monitor=False
+
+writer = SummaryWriter(log_dir='rnnlm_monitor') if write_monitor else None
 
 # start
 recorder = CostRecorder()
@@ -132,6 +136,11 @@ if retrain_and_dump :
             total_token += x.shape[0] * x.shape[1]
 
             loss.backward()
+
+            if write_monitor :
+                for name, param in model.named_parameters():
+                    if param.grad is not None:
+                        writer.add_histogram(f"{name}_grad", param.grad, epoch)
 
             optimizer.step()
             optimizer.zero_grad()
