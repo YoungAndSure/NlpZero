@@ -2,23 +2,23 @@
 
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
-import os
 from common.util import CostRecorder, save_model
 import torch
 import numpy as np
-from ptb import PTBDataset, SequentialBatchSampler
+from dataset.ptb import PTBDataset, SequentialBatchSampler
 from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import Embedding
 from torch.nn import RNN
 from torch.profiler import profile, record_function, ProfilerActivity
 from torch.nn import init
-from easy_data import HelloDataset
+from dataset.easy_data import HelloDataset
 from torch.utils.tensorboard import SummaryWriter
 
 # config:
-retrain_and_dump=True
+retrain_and_dump=False
 use_ptb=True
 seq_len = 50 if use_ptb else 6
 batch_size = 8 if use_ptb else 1

@@ -24,7 +24,7 @@ save_file = {
 }
 vocab_file = 'ptb.vocab.pkl'
 
-dataset_dir = os.path.dirname(os.path.abspath(__file__)) + '/data'
+dataset_dir = os.path.dirname(os.path.abspath(__file__)) + '/../data'
 
 
 def _download(file_name):

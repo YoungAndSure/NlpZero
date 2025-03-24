@@ -3,12 +3,13 @@
 if '__file__' in globals() :
   import os, sys
   sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+  sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
 from common.util import *
 import matplotlib.pyplot as plt
 import torch
 from torch import nn
-from easy_data import EasyDataset
+from dataset.easy_data import EasyDataset
 from torch.utils.data import DataLoader
 from torchviz import make_dot
 
