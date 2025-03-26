@@ -22,7 +22,8 @@ retrain_and_dump=True
 use_ptb=True
 seq_len = 50 if use_ptb else 6
 batch_size = 8 if use_ptb else 1
-max_epoch = 10
+max_epoch = 100
+max_loss = 0.01
 file_name = "lstmlm.pth" if use_ptb else "hello.pth"
 manual_test_case_size = 10 if use_ptb else 1
 write_monitor=False
@@ -74,7 +75,7 @@ class LstmLm(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, x_dimention)
 
-        self.lstm = nn.LSTM(input_size=x_dimention, hidden_size=hidden_size, num_layers=1, batch_first=True)
+        self.lstm = nn.LSTM(input_size=x_dimention, hidden_size=hidden_size, num_layers=2, batch_first=True)
 
         self.affine = nn.Linear(in_features=hidden_size, out_features=vocab_size)
         init.xavier_uniform_(self.affine.weight)
@@ -119,6 +120,7 @@ recorder.record("prepare")
 
 #with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
 if retrain_and_dump :
+    last_perplexity = 0.0
     for epoch in range(max_epoch) :
         total_loss = 0.0
         total_token = 0.0
@@ -152,6 +154,9 @@ if retrain_and_dump :
             iter += 1
         perplexity = np.exp(total_loss / total_token)
         print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}".format(epoch, total_loss / total_token, perplexity))
+        if abs(perplexity - last_perplexity) < max_loss :
+            break
+        last_perplexity = perplexity
     save_model(model, file_name)
 #prof.export_chrome_trace("rnnlm_profile.json")
 #print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
