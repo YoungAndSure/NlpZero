@@ -4,3 +4,4 @@ __pycache__/
 pytorch_prepare/data/
 **/*.pth
 **/*.png
+pytorch/rnnlm/rnnlm_monitor/
