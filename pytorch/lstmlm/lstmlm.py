@@ -75,7 +75,7 @@ class LstmLm(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, x_dimention)
 
-        self.lstm = nn.LSTM(input_size=x_dimention, hidden_size=hidden_size, num_layers=2, batch_first=True)
+        self.lstm = nn.LSTM(input_size=x_dimention, hidden_size=hidden_size, num_layers=2, batch_first=True, dropout=0.2)
 
         self.affine = nn.Linear(in_features=hidden_size, out_features=vocab_size)
         init.xavier_uniform_(self.affine.weight)
