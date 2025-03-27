@@ -138,6 +138,7 @@ if retrain_and_dump :
         iter = 0
 
         model.reset_state() # follow deepseek's advice, really good
+        model.train()
         for x,t in train_dataloader :
             x,t = x.to(device), t.to(device)
             y = model.forward(x)
@@ -169,20 +170,22 @@ if retrain_and_dump :
         perplexity = np.exp(total_loss / total_token)
 
         # 验证集确认困惑度在下降,及时停止训练
-        valid_total_loss = 0
-        valid_total_token = 0
-        for x,t in valid_dataloader :
-            x,t = x.to(device), t.to(device)
-            y = model.forward(x)
-            loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
-            valid_total_loss += loss.detach().item() * x.shape[0] * x.shape[1]
-            valid_total_token += x.shape[0] * x.shape[1]
-        valid_perplexity = np.exp(valid_total_loss / valid_total_token)
-        if valid_last_perplexity < valid_perplexity :
+        model.eval()
+        with torch.no_grad() :
+            valid_total_loss = 0
+            valid_total_token = 0
+            for x,t in valid_dataloader :
+                x,t = x.to(device), t.to(device)
+                y = model.forward(x)
+                loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
+                valid_total_loss += loss.detach().item() * x.shape[0] * x.shape[1]
+                valid_total_token += x.shape[0] * x.shape[1]
+            valid_perplexity = np.exp(valid_total_loss / valid_total_token)
+            if valid_last_perplexity < valid_perplexity :
+                print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, valid_perplexity:{:.3f}".format(epoch, total_loss / total_token, perplexity, valid_perplexity))
+                break
+            valid_last_perplexity = valid_perplexity
             print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, valid_perplexity:{:.3f}".format(epoch, total_loss / total_token, perplexity, valid_perplexity))
-            break
-        valid_last_perplexity = valid_perplexity
-        print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, valid_perplexity:{:.3f}".format(epoch, total_loss / total_token, perplexity, valid_perplexity))
 
     save_model(model, file_name)
 #prof.export_chrome_trace("rnnlm_profile.json")
