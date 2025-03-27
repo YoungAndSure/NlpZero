@@ -37,6 +37,7 @@ recorder = CostRecorder()
 # 读取PTB数据集
 train_data = PTBDataset(data_type="train", seq_len=seq_len, cutoff_rate=1) if use_ptb else HelloDataset()
 test_data = PTBDataset(data_type="test", seq_len=seq_len, cutoff_rate=1) if use_ptb else HelloDataset()
+valid_data = PTBDataset(data_type="val", seq_len=seq_len, cutoff_rate=1) if use_ptb else HelloDataset()
 
 # 测试集的词汇表是训练集的子集
 vocab_size = train_data.vocab_size()
@@ -50,6 +51,9 @@ train_dataloader = DataLoader(train_data,
 test_batch_sampler = SequentialBatchSampler(test_data, batch_size)
 test_dataloader = DataLoader(test_data,
                              batch_sampler=test_batch_sampler)
+valid_batch_sampler = SequentialBatchSampler(valid_data, batch_size)
+valid_dataloader = DataLoader(valid_data,
+                            batch_sampler=valid_batch_sampler)
 
 recorder.record("dataload")
 
@@ -121,7 +125,7 @@ recorder.record("prepare")
 
 #with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
 if retrain_and_dump :
-    last_perplexity = 0.0
+    valid_last_perplexity = 1e8
     for epoch in range(max_epoch) :
         total_loss = 0.0
         total_token = 0.0
@@ -150,16 +154,30 @@ if retrain_and_dump :
                     if param.grad is not None:
                         writer.add_histogram(f"{name}_grad", param.grad, epoch)
 
+            # 梯度裁切
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=20, norm_type=2)
 
             optimizer.step()
             optimizer.zero_grad()
             iter += 1
         perplexity = np.exp(total_loss / total_token)
-        print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}".format(epoch, total_loss / total_token, perplexity))
-        if abs(perplexity - last_perplexity) < max_loss :
+
+        # 验证集确认困惑度在下降,及时停止训练
+        valid_total_loss = 0
+        valid_total_token = 0
+        for x,t in valid_dataloader :
+            x,t = x.to(device), t.to(device)
+            y = model.forward(x)
+            loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
+            valid_total_loss += loss.detach().item() * x.shape[0] * x.shape[1]
+            valid_total_token += x.shape[0] * x.shape[1]
+        valid_perplexity = np.exp(valid_total_loss / valid_total_token)
+        if valid_last_perplexity < valid_perplexity :
+            print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, valid_perplexity:{:.3f}".format(epoch, total_loss / total_token, perplexity, valid_perplexity))
             break
-        last_perplexity = perplexity
+        valid_last_perplexity = valid_perplexity
+        print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, valid_perplexity:{:.3f}".format(epoch, total_loss / total_token, perplexity, valid_perplexity))
+
     save_model(model, file_name)
 #prof.export_chrome_trace("rnnlm_profile.json")
 #print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
