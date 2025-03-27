@@ -14,6 +14,7 @@ from torch.nn import Embedding
 from torch.nn import LSTM
 from torch.profiler import profile, record_function, ProfilerActivity
 from torch.nn import init
+from torch.nn.utils import clip_grad_norm_
 from dataset.easy_data import HelloDataset
 from torch.utils.tensorboard import SummaryWriter
 
@@ -148,6 +149,8 @@ if retrain_and_dump :
                 for name, param in model.named_parameters():
                     if param.grad is not None:
                         writer.add_histogram(f"{name}_grad", param.grad, epoch)
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=20, norm_type=2)
 
             optimizer.step()
             optimizer.zero_grad()
