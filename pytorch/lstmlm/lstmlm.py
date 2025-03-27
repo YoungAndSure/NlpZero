@@ -75,15 +75,21 @@ class LstmLm(nn.Module):
     def __init__(self, vocab_size, seq_len):
         super().__init__()
         self.vocab_size = vocab_size
-        x_dimention = 128
         hidden_size = 256
 
-        self.embedding = nn.Embedding(vocab_size, x_dimention)
+        self.embedding = nn.Embedding(vocab_size, hidden_size)
+        init.xavier_uniform_(self.embedding.weight)
 
-        self.lstm = nn.LSTM(input_size=x_dimention, hidden_size=hidden_size, num_layers=2, batch_first=True, dropout=0.2)
+        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=2, batch_first=True, dropout=0.2)
 
-        self.affine = nn.Linear(in_features=hidden_size, out_features=vocab_size)
-        init.xavier_uniform_(self.affine.weight)
+        self.affine = nn.Linear(in_features=hidden_size, out_features=vocab_size, bias=False)
+        self.affine.weight = nn.Parameter(
+            # 有意思的是，原以为这里要转置一下，deepseek给出的示例也是转置，但实际上不需要
+            # 查看Linear源码就可以发现，在创建weight时的shape为(out_feature, in_feature),
+            # 为什么呢？可以想到，这样在计算时是按行存取，可以提升cache命中率，提升性能
+            self.embedding.weight,
+            requires_grad=True
+        )
 
         self.h_last = None
         self.c_last = None
