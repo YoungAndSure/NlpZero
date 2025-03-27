@@ -19,7 +19,7 @@ from dataset.easy_data import HelloDataset
 from torch.utils.tensorboard import SummaryWriter
 
 # config:
-retrain_and_dump=True
+retrain_and_dump=False
 use_ptb=True
 seq_len = 50 if use_ptb else 6
 batch_size = 8 if use_ptb else 1
@@ -218,27 +218,30 @@ with torch.no_grad() :
     model.reset_state()
 
     word_to_id, id_to_word = train_data.get_dict()
-
-    inputs = []
-    ans = []
-    for i in range(manual_test_case_size) :
-        ids = train_data.get_random_ids(length=10)
-        inputs.append(ids[:-1])
-        ans.append(ids)
-
-    x = torch.tensor(np.array(inputs))
-    y = model.forward(x.to(device))
-    last_word = y[:,-1,:]
-    last_word = nn.Softmax(dim=1)(last_word)
-    value, idx = last_word.max(dim=1)
+    skip_word = ["<unk>"]
 
     print("\n----------manual test--------")
+    start_length=10
+    total_length=50
     for i in range(manual_test_case_size) :
-        for word in ans[i] :
-            print(id_to_word[word], end=' ')
+        inputs = train_data.get_random_ids(length=start_length)
+        while inputs.shape[0] < total_length :
+            x = torch.tensor(inputs.reshape(1, -1))
+            y = model.forward(x.to(device))
+            last_word = y[:,-1,:]
+            last_word = nn.Softmax(dim=1)(last_word)
+
+            p = last_word[0].cpu().numpy()
+            sampled = np.random.choice(last_word.shape[1], size=1, p=p)
+            if id_to_word[sampled[0]] in skip_word :
+                continue
+            inputs = np.append(inputs, sampled)
+
+        for id in inputs :
+            word = id_to_word[id]
+            if word == '<eos>' :
+                word = '.'
+            print(word, end=' ')
         print()
-        for word in inputs[i] :
-            print(id_to_word[word], end=' ')
-        print("[{}]".format(id_to_word[idx[i].item()]))
         print()
     print("-----------end------------")
