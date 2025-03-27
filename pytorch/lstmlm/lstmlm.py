@@ -221,8 +221,8 @@ with torch.no_grad() :
     skip_word = ["<unk>"]
 
     print("\n----------manual test--------")
-    start_length=10
-    total_length=50
+    start_length=10 if use_ptb else 6
+    total_length=50 if use_ptb else 7
     for i in range(manual_test_case_size) :
         inputs = train_data.get_random_ids(length=start_length)
         while inputs.shape[0] < total_length :
@@ -242,6 +242,5 @@ with torch.no_grad() :
             if word == '<eos>' :
                 word = '.'
             print(word, end=' ')
-        print()
         print()
     print("-----------end------------")
