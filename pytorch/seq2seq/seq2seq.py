@@ -16,9 +16,9 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim import Adam
 
 # config:
-retrain_and_dump=False
+retrain_and_dump=True
 batch_size = 8
-max_epoch = 10
+max_epoch = 100
 file_name = "seq2seq.pth"
 manual_test_case_size = 10
 
@@ -130,6 +130,7 @@ if retrain_and_dump :
         print("epoch:{}, loss:{:.5f}".format(epoch, avg_loss))
         if avg_loss > last_loss or avg_loss < 1e-5 :
             break
+        last_loss = avg_loss
     save_model(model, file_name)
 else :
     model.load_state_dict(torch.load(file_name))
