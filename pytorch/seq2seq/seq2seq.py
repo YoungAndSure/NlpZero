@@ -38,9 +38,32 @@ print("train data size:", len(train_dataloader) * batch_size)
 print("test data size", len(test_dataloader) * batch_size)
 for x,t in train_dataloader:
     print(f"Shape of train X [BATCH, H]: {x.shape}")
+    print(f"Shape of train T [BATCH, H]: {t.shape}")
     break
 for x,t in test_dataloader:
     print(f"Shape of test X [BATCH, H]: {x.shape}")
+    print(f"Shape of test T [BATCH, H]: {t.shape}")
     break
 print("--------------end--------------")
 print()
+
+class Encoder(nn.Module) :
+    def __init__(self, vocab_size, wordvec_size, hidden_size) :
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, wordvec_size)
+        self.lstm = nn.LSTM(input_size=wordvec_size, hidden_size=hidden_size, num_layers=2, batch_first=True)
+
+    def forward(self, xs) :
+        BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
+        emb = self.embedding(xs)
+        BATCH, SEQ_LEN, WORDVEC_SIZE = emb.shape[0], emb.shape[1], emb.shape[2]
+        y, (hn, cn) = self.lstm(emb)
+        LAYER_NUM, BATCH_SIZE, HIDDEN_SIZE = hn.shape[0], hn.shape[1], hn.shape[2]
+        last_layer_hn = hn[-1,:,:]
+        return last_layer_hn
+
+encoder = Encoder(vocab_size, 128, 256)
+
+for x,t in train_dataloader :
+    hn = encoder(x)
+    break
