@@ -151,7 +151,12 @@ with torch.no_grad() :
     char_to_id, id_to_char = train_data.get_vocab()
     startid = char_to_id['_']
     for i in range(manual_test_case_size) :
-        question = torch.tensor(train_data.get_random_case()).to(device)
-        print(train_data.ids_to_string(question.to('cpu').numpy()), end='')
-        ans = model.generate(question.unsqueeze(0), startid, 5)
-        print("={}".format(train_data.ids_to_string(ans[0][1:].to('cpu').numpy())))
+        question = train_data.get_random_case()
+        right_ans = eval(train_data.ids_to_string(question))
+        print(train_data.ids_to_string(question).strip(), end='')
+
+        question = torch.tensor(question).to(device)
+        predict_ans = model.generate(question.unsqueeze(0), startid, 5)
+        predict_ans = train_data.ids_to_string(predict_ans[0][1:].to('cpu').numpy())
+        print("={}".format(predict_ans))
+        print("ans:{}  {}".format(right_ans, "x" if right_ans != int(predict_ans) else 'v'))
