@@ -32,6 +32,8 @@ vocab_size = train_data.vocab_size()
 train_dataloader = DataLoader(train_data, batch_size=batch_size)
 test_dataloader = DataLoader(test_data, batch_size=batch_size)
 
+device = 'cuda'
+
 print()
 print("---------dataset message---------")
 print("vocab_size:", vocab_size)
@@ -68,6 +70,7 @@ class Decoder(nn.Module) :
         self.embedding = Embedding(vocab_size, wordvec_size)
         self.lstm = LSTM(wordvec_size, hidden_size, num_layers=1, batch_first=True)
         self.affine = nn.Linear(hidden_size, vocab_size)
+
     def forward(self, xs, h) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
         emb = self.embedding(xs)
@@ -75,6 +78,11 @@ class Decoder(nn.Module) :
         empty_cn = torch.zeros_like(h)
         y, (hn, cn) = self.lstm(emb, (h, empty_cn))
         y = self.affine(y)
+        return y
+
+    def generate(self, xs, h) :
+        y = self.forward(xs, h)
+        y = torch.argmax(y, dim=2)
         return y
 
 class Seq2Seq(nn.Module) :
@@ -88,30 +96,43 @@ class Seq2Seq(nn.Module) :
         y = self.decoder(ts, hn)
         return y
 
-device = 'cuda'
+    def generate(self, xs, startid, sample_size) :
+        BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
+        hn = self.encoder(xs)
+        ans = torch.zeros(BATCH, 1, dtype=int).to(device)
+        ans[:,0] = startid
+        while ans.shape[1] < sample_size :
+            y = self.decoder.generate(ans, hn)
+            ans = torch.cat((ans, y[:,-1].unsqueeze(0)), dim=1)
+        return ans
+
 model = Seq2Seq(vocab_size, 128, 256).to(device)
 loss_fn = nn.CrossEntropyLoss(reduction='mean')
 optimizer = Adam(model.parameters(), lr=0.01)
 
-total_loss = 0.0
-total_token = 0
-last_loss = 1e5
-for epoch in range(max_epoch) :
-    for x,t in train_dataloader :
-        x,t = x.to(device),t.to(device)
-        optimizer.zero_grad()
-        y = model(x, t)
-        loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
-        loss.backward()
-        optimizer.step()
+if retrain_and_dump :
+    total_loss = 0.0
+    total_token = 0
+    last_loss = 1e5
+    for epoch in range(max_epoch) :
+        for x,t in train_dataloader :
+            x,t = x.to(device),t.to(device)
+            optimizer.zero_grad()
+            y = model(x, t)
+            loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
+            loss.backward()
+            optimizer.step()
 
-        total_loss += loss.detach().item() * t.shape[1]
-        total_token += t.shape[1]
+            total_loss += loss.detach().item() * t.shape[1]
+            total_token += t.shape[1]
 
-    avg_loss = total_loss / total_token
-    print("epoch:{}, loss:{:.5f}".format(epoch, avg_loss))
-    if avg_loss > last_loss or avg_loss < 1e-5 :
-        break
+        avg_loss = total_loss / total_token
+        print("epoch:{}, loss:{:.5f}".format(epoch, avg_loss))
+        if avg_loss > last_loss or avg_loss < 1e-5 :
+            break
+    save_model(model, file_name)
+else :
+    model.load_state_dict(torch.load(file_name))
 
 with torch.no_grad() :
     test_total_loss = 0.0
@@ -123,5 +144,13 @@ with torch.no_grad() :
         loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
         test_total_loss += loss.detach().item() * t.shape[1]
         test_total_token += t.shape[1]
+    print(test_total_loss, test_total_token)
     test_avg_loss = test_total_loss / test_total_token
     print("test loss:{:.5f}".format(test_avg_loss))
+
+with torch.no_grad() :
+    char_to_id, id_to_char = train_data.get_vocab()
+    startid = char_to_id['_']
+    question = torch.tensor(train_data.get_random_case()).to(device)
+    ans = model.generate(question.unsqueeze(0), startid, 5)
+    print(ans)
