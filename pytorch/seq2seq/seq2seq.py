@@ -18,7 +18,7 @@ from torch.optim import Adam
 # config:
 retrain_and_dump=False
 batch_size = 8
-max_epoch = 5
+max_epoch = 2
 file_name = "seq2seq.pth"
 manual_test_case_size = 10
 
@@ -88,7 +88,8 @@ class Seq2Seq(nn.Module) :
         y = self.decoder(ts, hn)
         return y
 
-model = Seq2Seq(vocab_size, 128, 256)
+device = 'cuda'
+model = Seq2Seq(vocab_size, 128, 256).to(device)
 loss_fn = nn.CrossEntropyLoss(reduction='mean')
 optimizer = Adam(model.parameters(), lr=0.01)
 
@@ -97,6 +98,7 @@ total_token = 0
 last_loss = 1e5
 for epoch in range(max_epoch) :
     for x,t in train_dataloader :
+        x,t = x.to(device),t.to(device)
         optimizer.zero_grad()
         y = model(x, t)
         loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
@@ -107,6 +109,19 @@ for epoch in range(max_epoch) :
         total_token += t.shape[1]
 
     avg_loss = total_loss / total_token
-    print("epoch:{}, loss:{}".format(epoch, avg_loss))
+    print("epoch:{}, loss:{:.5f}".format(epoch, avg_loss))
     if avg_loss > last_loss or avg_loss < 1e-5 :
         break
+
+with torch.no_grad() :
+    test_total_loss = 0.0
+    test_total_token = 0
+    for x,t in test_dataloader :
+        x,t = x.to(device),t.to(device)
+        optimizer.zero_grad()
+        y = model(x, t)
+        loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
+        test_total_loss += loss.detach().item() * t.shape[1]
+        test_total_token += t.shape[1]
+    test_avg_loss = test_total_loss / test_total_token
+    print("test loss:{:.5f}".format(test_avg_loss))
