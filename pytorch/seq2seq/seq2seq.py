@@ -14,11 +14,12 @@ from torch.nn import Embedding
 from torch.nn import LSTM
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 
 # config:
 retrain_and_dump=True
-batch_size = 8
-max_epoch = 100
+batch_size = 16
+max_epoch = 200
 file_name = "seq2seq.pth"
 manual_test_case_size = 10
 
@@ -109,6 +110,7 @@ class Seq2Seq(nn.Module) :
 model = Seq2Seq(vocab_size, 128, 256).to(device)
 loss_fn = nn.CrossEntropyLoss(reduction='mean')
 optimizer = Adam(model.parameters(), lr=0.01)
+scheduler = ExponentialLR(optimizer, gamma=0.9)
 
 if retrain_and_dump :
     total_loss = 0.0
@@ -125,6 +127,7 @@ if retrain_and_dump :
 
             total_loss += loss.detach().item() * t.shape[1]
             total_token += t.shape[1]
+        scheduler.step()
 
         avg_loss = total_loss / total_token
         print("epoch:{}, loss:{:.5f}".format(epoch, avg_loss))
