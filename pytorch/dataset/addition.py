@@ -35,3 +35,9 @@ class AdditionDataset(Dataset):
     def get_random_case(self) :
       index = np.random.randint(0, len(self.xs))
       return self.xs[index]
+
+    def ids_to_string(self, ids, d='') :
+      string = []
+      for i in range(ids.shape[0]) :
+         string.append(self.id_to_char[ids[i]])
+      return d.join(string)

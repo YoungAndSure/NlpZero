@@ -18,7 +18,7 @@ from torch.optim import Adam
 # config:
 retrain_and_dump=False
 batch_size = 8
-max_epoch = 2
+max_epoch = 10
 file_name = "seq2seq.pth"
 manual_test_case_size = 10
 
@@ -118,8 +118,8 @@ if retrain_and_dump :
         for x,t in train_dataloader :
             x,t = x.to(device),t.to(device)
             optimizer.zero_grad()
-            y = model(x, t)
-            loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
+            y = model(x, t[:,:-1])
+            loss = loss_fn(y.reshape(-1, vocab_size), t[:,1:].reshape(-1))
             loss.backward()
             optimizer.step()
 
@@ -140,17 +140,18 @@ with torch.no_grad() :
     for x,t in test_dataloader :
         x,t = x.to(device),t.to(device)
         optimizer.zero_grad()
-        y = model(x, t)
-        loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
+        y = model(x, t[:,:-1])
+        loss = loss_fn(y.reshape(-1, vocab_size), t[:,1:].reshape(-1))
         test_total_loss += loss.detach().item() * t.shape[1]
         test_total_token += t.shape[1]
-    print(test_total_loss, test_total_token)
     test_avg_loss = test_total_loss / test_total_token
     print("test loss:{:.5f}".format(test_avg_loss))
 
 with torch.no_grad() :
     char_to_id, id_to_char = train_data.get_vocab()
     startid = char_to_id['_']
-    question = torch.tensor(train_data.get_random_case()).to(device)
-    ans = model.generate(question.unsqueeze(0), startid, 5)
-    print(ans)
+    for i in range(manual_test_case_size) :
+        question = torch.tensor(train_data.get_random_case()).to(device)
+        print(train_data.ids_to_string(question.to('cpu').numpy()), end='')
+        ans = model.generate(question.unsqueeze(0), startid, 5)
+        print("={}".format(train_data.ids_to_string(ans[0][1:].to('cpu').numpy())))
