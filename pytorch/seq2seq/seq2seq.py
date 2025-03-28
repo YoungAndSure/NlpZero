@@ -104,7 +104,7 @@ class Seq2Seq(nn.Module) :
         ans[:,0] = startid
         while ans.shape[1] < sample_size :
             y = self.decoder.generate(ans, hn)
-            ans = torch.cat((ans, y[:,-1].unsqueeze(0)), dim=1)
+            ans = torch.cat((ans, y[:,-1:]), dim=1)
         return ans
 
 model = Seq2Seq(vocab_size, 128, 256).to(device)
@@ -130,26 +130,28 @@ if retrain_and_dump :
         scheduler.step()
 
         avg_loss = total_loss / total_token
-        print("epoch:{}, loss:{:.5f}".format(epoch, avg_loss))
+
+        # 测试集计算准确率
+        with torch.no_grad() :
+            total_count = 0.0
+            right_count = 0.0
+            for x,t in test_dataloader :
+                x,t = x.to(device),t.to(device)
+                y = model.generate(x, 6, 5)
+                for i in range(x.shape[0]) :
+                    right_ans = eval(train_data.ids_to_string(x[i].detach().to('cpu').numpy()))
+                    predict_ans = int(train_data.ids_to_string(y[i][1:].detach().to('cpu').numpy()))
+                    total_count += 1
+                    right_count = 1 if right_ans == predict_ans else 0
+            right_rate = right_count / total_count
+
+        print("epoch:{}, loss:{:.5f}, right_rate:{:.5f}".format(epoch, avg_loss, right_rate))
         if avg_loss > last_loss or avg_loss < 1e-5 :
             break
         last_loss = avg_loss
     save_model(model, file_name)
 else :
     model.load_state_dict(torch.load(file_name))
-
-with torch.no_grad() :
-    test_total_loss = 0.0
-    test_total_token = 0
-    for x,t in test_dataloader :
-        x,t = x.to(device),t.to(device)
-        optimizer.zero_grad()
-        y = model(x, t[:,:-1])
-        loss = loss_fn(y.reshape(-1, vocab_size), t[:,1:].reshape(-1))
-        test_total_loss += loss.detach().item() * t.shape[1]
-        test_total_token += t.shape[1]
-    test_avg_loss = test_total_loss / test_total_token
-    print("test loss:{:.5f}".format(test_avg_loss))
 
 with torch.no_grad() :
     char_to_id, id_to_char = train_data.get_vocab()
