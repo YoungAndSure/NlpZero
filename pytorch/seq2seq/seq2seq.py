@@ -51,7 +51,7 @@ class Encoder(nn.Module) :
     def __init__(self, vocab_size, wordvec_size, hidden_size) :
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, wordvec_size)
-        self.lstm = nn.LSTM(input_size=wordvec_size, hidden_size=hidden_size, num_layers=2, batch_first=True)
+        self.lstm = nn.LSTM(input_size=wordvec_size, hidden_size=hidden_size, num_layers=1, batch_first=True)
 
     def forward(self, xs) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
@@ -59,11 +59,36 @@ class Encoder(nn.Module) :
         BATCH, SEQ_LEN, WORDVEC_SIZE = emb.shape[0], emb.shape[1], emb.shape[2]
         y, (hn, cn) = self.lstm(emb)
         LAYER_NUM, BATCH_SIZE, HIDDEN_SIZE = hn.shape[0], hn.shape[1], hn.shape[2]
-        last_layer_hn = hn[-1,:,:]
-        return last_layer_hn
+        return hn
 
-encoder = Encoder(vocab_size, 128, 256)
+class Decoder(nn.Module) :
+    def __init__(self, vocab_size, wordvec_size, hidden_size) :
+        super().__init__()
+        self.embedding = Embedding(vocab_size, wordvec_size)
+        self.lstm = LSTM(wordvec_size, hidden_size, num_layers=1, batch_first=True)
+        self.affine = nn.Linear(hidden_size, vocab_size)
+    def forward(self, xs, h) :
+        BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
+        emb = self.embedding(xs)
+        BATCH, SEQ_LEN, WORDVEC_SIZE = emb.shape[0], emb.shape[1], emb.shape[2]
+        empty_cn = torch.zeros_like(h)
+        y, (hn, cn) = self.lstm(emb, (h, empty_cn))
+        y = self.affine(y)
+        return y
+
+class Seq2Seq(nn.Module) :
+    def __init__(self, vocab_size, wordvec_size, hidden_size) :
+        super().__init__()
+        self.encoder = Encoder(vocab_size, wordvec_size, hidden_size)
+        self.decoder = Decoder(vocab_size, wordvec_size, hidden_size)
+
+    def forward(self, xs, ts) :
+        hn = self.encoder(xs)
+        y = self.decoder(ts, hn)
+        return y
+
+model = Seq2Seq(vocab_size, 128, 256)
 
 for x,t in train_dataloader :
-    hn = encoder(x)
+    y = model(x, t)
     break
