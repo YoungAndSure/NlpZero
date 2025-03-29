@@ -142,10 +142,10 @@ if retrain_and_dump :
                     right_ans = eval(train_data.ids_to_string(x[i].detach().to('cpu').numpy()))
                     predict_ans = int(train_data.ids_to_string(y[i][1:].detach().to('cpu').numpy()))
                     total_count += 1
-                    right_count = 1 if right_ans == predict_ans else 0
+                    right_count += 1 if right_ans == predict_ans else 0
             right_rate = right_count / total_count
 
-        print("epoch:{}, loss:{:.5f}, right_rate:{:.5f}".format(epoch, avg_loss, right_rate))
+        print("epoch:{}, loss:{:.5f}, right_count:{}, right_rate:{:.5f}".format(epoch, avg_loss, right_count, right_rate))
         if avg_loss > last_loss or avg_loss < 1e-5 :
             break
         last_loss = avg_loss
