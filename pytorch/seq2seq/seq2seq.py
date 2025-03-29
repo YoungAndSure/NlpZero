@@ -17,7 +17,7 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
 # config:
-retrain_and_dump=True
+retrain_and_dump=False
 batch_size = 16
 max_epoch = 200
 file_name = "seq2seq.pth"
@@ -69,16 +69,21 @@ class Decoder(nn.Module) :
     def __init__(self, vocab_size, wordvec_size, hidden_size) :
         super().__init__()
         self.embedding = Embedding(vocab_size, wordvec_size)
-        self.lstm = LSTM(wordvec_size, hidden_size, num_layers=1, batch_first=True)
-        self.affine = nn.Linear(hidden_size, vocab_size)
+        self.lstm = LSTM(wordvec_size + hidden_size, hidden_size, num_layers=1, batch_first=True)
+        self.affine = nn.Linear(hidden_size + hidden_size, vocab_size)
 
     def forward(self, xs, h) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
         emb = self.embedding(xs)
         BATCH, SEQ_LEN, WORDVEC_SIZE = emb.shape[0], emb.shape[1], emb.shape[2]
+
+        h_for_cat = h.transpose(1,0).expand(-1,emb.shape[1],-1)
+        emb_cat_h = torch.concat((emb, h_for_cat), dim=2)
         empty_cn = torch.zeros_like(h)
-        y, (hn, cn) = self.lstm(emb, (h, empty_cn))
-        y = self.affine(y)
+        y, (hn, cn) = self.lstm(emb_cat_h, (h, empty_cn))
+
+        y_cat_h = torch.concat((y, h_for_cat), dim=2)
+        y = self.affine(y_cat_h)
         return y
 
     def generate(self, xs, h) :
@@ -150,7 +155,7 @@ if retrain_and_dump :
         print("epoch:{}, loss:{:.5f}, right_count:{}, right_rate:{:.5f}".format(epoch, avg_loss, right_count, right_rate))
         if right_count < last_right_count :
             right_count_down += 1
-        if right_count_down > 10
+        if right_count_down > 10 :
             break
         last_right_count = right_count
     save_model(model, file_name)
