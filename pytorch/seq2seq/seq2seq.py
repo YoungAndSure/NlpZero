@@ -171,7 +171,7 @@ with torch.no_grad() :
         print(train_data.ids_to_string(question).strip(), end='')
 
         question = torch.tensor(question).to(device)
-        predict_ans = model.generate(question.unsqueeze(0), startid, 5)
+        predict_ans = model.generate(torch.flip(question.unsqueeze(0), [1]), startid, 5)
         predict_ans = train_data.ids_to_string(predict_ans[0][1:].to('cpu').numpy())
         print("={}".format(predict_ans))
         print("ans:{}  {}".format(right_ans, "x" if right_ans != int(predict_ans) else 'v'))
