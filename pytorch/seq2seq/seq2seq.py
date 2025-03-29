@@ -115,12 +115,13 @@ scheduler = ExponentialLR(optimizer, gamma=0.9)
 if retrain_and_dump :
     total_loss = 0.0
     total_token = 0
-    last_loss = 1e5
+    last_right_count = 0
+    right_count_down = 0
     for epoch in range(max_epoch) :
         for x,t in train_dataloader :
             x,t = x.to(device),t.to(device)
             optimizer.zero_grad()
-            y = model(x, t[:,:-1])
+            y = model(torch.flip(x, [1]), t[:,:-1])
             loss = loss_fn(y.reshape(-1, vocab_size), t[:,1:].reshape(-1))
             loss.backward()
             optimizer.step()
@@ -135,9 +136,10 @@ if retrain_and_dump :
         with torch.no_grad() :
             total_count = 0.0
             right_count = 0.0
+            startid = 6 # '_'
             for x,t in test_dataloader :
                 x,t = x.to(device),t.to(device)
-                y = model.generate(x, 6, 5)
+                y = model.generate(torch.flip(x, [1]), startid, 5)
                 for i in range(x.shape[0]) :
                     right_ans = eval(train_data.ids_to_string(x[i].detach().to('cpu').numpy()))
                     predict_ans = int(train_data.ids_to_string(y[i][1:].detach().to('cpu').numpy()))
@@ -146,9 +148,11 @@ if retrain_and_dump :
             right_rate = right_count / total_count
 
         print("epoch:{}, loss:{:.5f}, right_count:{}, right_rate:{:.5f}".format(epoch, avg_loss, right_count, right_rate))
-        if avg_loss > last_loss or avg_loss < 1e-5 :
+        if right_count < last_right_count :
+            right_count_down += 1
+        if right_count_down > 10
             break
-        last_loss = avg_loss
+        last_right_count = right_count
     save_model(model, file_name)
 else :
     model.load_state_dict(torch.load(file_name))
