@@ -31,8 +31,12 @@ train_data = SequenceDataset(data_type="train")
 test_data = SequenceDataset(data_type="test")
 vocab_size = train_data.vocab_size()
 
+recorder.record("dataset")
+
 train_dataloader = DataLoader(train_data, batch_size=batch_size)
 test_dataloader = DataLoader(test_data, batch_size=batch_size)
+
+recorder.record("dataload")
 
 device = 'cuda'
 
@@ -121,6 +125,8 @@ loss_fn = nn.CrossEntropyLoss(reduction='mean')
 optimizer = Adam(model.parameters(), lr=0.01)
 scheduler = ExponentialLR(optimizer, gamma=0.9)
 
+recorder.record("prepare")
+
 if retrain_and_dump :
     total_loss = 0.0
     total_token = 0
@@ -165,6 +171,9 @@ if retrain_and_dump :
     save_model(model, file_name)
 else :
     model.load_state_dict(torch.load(file_name))
+
+recorder.record("train&text")
+recorder.print_record()
 
 with torch.no_grad() :
     char_to_id, id_to_char = train_data.get_vocab()
