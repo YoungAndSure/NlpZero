@@ -11,6 +11,7 @@ import numpy as np
 from dataset import SequenceDataset
 from torch.utils.data import DataLoader
 from torch import nn
+from torch.nn import init
 from torch.nn import Embedding
 from torch.nn import LSTM
 from torch.utils.tensorboard import SummaryWriter
@@ -57,6 +58,7 @@ class AttentionEncoder(nn.Module) :
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, wordvec_size)
         self.lstm = nn.LSTM(input_size=wordvec_size, hidden_size=hidden_size, num_layers=1, batch_first=True)
+        init.xavier_uniform_(self.embedding.weight)
 
     def forward(self, xs) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
@@ -92,6 +94,8 @@ class AttentionDecoder(nn.Module) :
         self.lstm = LSTM(wordvec_size, hidden_size, num_layers=1, batch_first=True)
         self.attention = Attention()
         self.affine = nn.Linear(hidden_size, vocab_size)
+        init.xavier_uniform_(self.embedding.weight)
+        init.xavier_uniform_(self.affine.weight)
 
     def forward(self, xs, hs, h) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
