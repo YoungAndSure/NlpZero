@@ -8,9 +8,9 @@ from basic_dataset.sequence import *
 from torch.utils.data import Dataset
 import numpy as np
 
-class AdditionDataset(Dataset):
-    def __init__(self, data_type='train'):
-      (x_train, t_train), (x_test, t_test) = load_data()
+class SequenceDataset(Dataset):
+    def __init__(self, data_type='train', data_name='addition.txt'):
+      (x_train, t_train), (x_test, t_test) = load_data(data_name)
       if data_type == 'train' :
          self.xs = x_train
          self.ts = t_train

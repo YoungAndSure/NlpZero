@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from common.util import CostRecorder, save_model
 import torch
 import numpy as np
-from dataset.addition import AdditionDataset
+from dataset import SequenceDataset
 from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import Embedding
@@ -26,8 +26,8 @@ manual_test_case_size = 10
 # start
 recorder = CostRecorder()
 
-train_data = AdditionDataset(data_type="train") 
-test_data = AdditionDataset(data_type="test")
+train_data = SequenceDataset(data_type="train") 
+test_data = SequenceDataset(data_type="test")
 vocab_size = train_data.vocab_size()
 
 train_dataloader = DataLoader(train_data, batch_size=batch_size)
