@@ -34,7 +34,7 @@ class SequenceDataset(Dataset):
 
     def get_random_case(self) :
       index = np.random.randint(0, len(self.xs))
-      return self.xs[index]
+      return self.xs[index], self.ts[index]
 
     def ids_to_string(self, ids, d='') :
       string = []

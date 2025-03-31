@@ -64,31 +64,51 @@ class AttentionEncoder(nn.Module) :
         BATCH, SEQ_LEN, WORDVEC_SIZE = emb.shape[0], emb.shape[1], emb.shape[2]
         y, (hn, cn) = self.lstm(emb)
         LAYER_NUM, BATCH_SIZE, HIDDEN_SIZE = hn.shape[0], hn.shape[1], hn.shape[2]
-        return hn
+        return y, hn
+
+class Attention(nn.Module) :
+    def __init__(self) :
+        super().__init__()
+
+    def forward(self, ys, hs) :
+        # 比较蛋疼的就是这个DECODER_SEQ_LEN，干扰了理解
+        BATCH, DECODER_SEQ_LEN, HIDDEN_SIZE = ys.shape[0], ys.shape[1], ys.shape[2]
+        BATCH, ENCODER_SEQ_LEN, HIDDEN_SIZE = hs.shape[0], hs.shape[1], hs.shape[2]
+        hs_for_cal = hs.transpose(1, 2)
+        results = torch.matmul(ys, hs_for_cal)
+        weights = torch.softmax(results, dim=2)
+
+        hs_unsqueeze = hs.unsqueeze(1).expand(-1, DECODER_SEQ_LEN, -1, -1)
+        weights_broadcast = weights.unsqueeze(3).expand(-1, -1, -1, HIDDEN_SIZE)
+        cal_hs = hs_unsqueeze * weights_broadcast
+        sum_hs = torch.sum(cal_hs, dim=2)
+
+        return sum_hs
 
 class AttentionDecoder(nn.Module) :
     def __init__(self, vocab_size, wordvec_size, hidden_size) :
         super().__init__()
         self.embedding = Embedding(vocab_size, wordvec_size)
-        self.lstm = LSTM(wordvec_size + hidden_size, hidden_size, num_layers=1, batch_first=True)
-        self.affine = nn.Linear(hidden_size + hidden_size, vocab_size)
+        self.lstm = LSTM(wordvec_size, hidden_size, num_layers=1, batch_first=True)
+        self.attention = Attention()
+        self.affine = nn.Linear(hidden_size, vocab_size)
 
-    def forward(self, xs, h) :
+    def forward(self, xs, hs, h) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
         emb = self.embedding(xs)
         BATCH, SEQ_LEN, WORDVEC_SIZE = emb.shape[0], emb.shape[1], emb.shape[2]
 
-        h_for_cat = h.transpose(1,0).expand(-1,emb.shape[1],-1)
-        emb_cat_h = torch.concat((emb, h_for_cat), dim=2)
         empty_cn = torch.zeros_like(h)
-        y, (hn, cn) = self.lstm(emb_cat_h, (h, empty_cn))
+        ys, (hn, cn) = self.lstm(emb, (h, empty_cn))
 
-        y_cat_h = torch.concat((y, h_for_cat), dim=2)
-        y = self.affine(y_cat_h)
+        # 编码器的每个时间输出hs,和解码器的每个时间输出ys，计算attention
+        y = self.attention(ys, hs)
+
+        y = self.affine(y)
         return y
 
-    def generate(self, xs, h) :
-        y = self.forward(xs, h)
+    def generate(self, xs, hs, h) :
+        y = self.forward(xs, hs, h)
         y = torch.argmax(y, dim=2)
         return y
 
@@ -99,17 +119,17 @@ class AttentionSeq2Seq(nn.Module) :
         self.decoder = AttentionDecoder(vocab_size, wordvec_size, hidden_size)
 
     def forward(self, xs, ts) :
-        hn = self.encoder(xs)
-        y = self.decoder(ts, hn)
+        ys, hn = self.encoder(xs)
+        y = self.decoder(ts, ys, hn)
         return y
 
     def generate(self, xs, startid, sample_size) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
-        hn = self.encoder(xs)
+        hs, h = self.encoder(xs)
         ans = torch.zeros(BATCH, 1, dtype=int).to(device)
         ans[:,0] = startid
         while ans.shape[1] < sample_size :
-            y = self.decoder.generate(ans, hn)
+            y = self.decoder.generate(ans, hs, h)
             ans = torch.cat((ans, y[:,-1:]), dim=1)
         return ans
 
@@ -147,8 +167,7 @@ if retrain_and_dump :
                 x,t = x.to(device),t.to(device)
                 y = model.generate(torch.flip(x, [1]), startid, 11)
                 for i in range(x.shape[0]) :
-                    date_obj = parser.parse(train_data.ids_to_string(x[i].detach().to('cpu').numpy()))
-                    right_ans = date_obj.strftime("%Y-%m-%d")
+                    right_ans = train_data.ids_to_string(t[i][1:].detach().to('cpu').numpy())
                     predict_ans = train_data.ids_to_string(y[i][1:].detach().to('cpu').numpy())
                     total_count += 1
                     right_count += 1 if right_ans == predict_ans else 0
@@ -168,13 +187,12 @@ with torch.no_grad() :
     char_to_id, id_to_char = train_data.get_vocab()
     startid = char_to_id['_']
     for i in range(manual_test_case_size) :
-        question = train_data.get_random_case()
-        date_obj = parser.parse(train_data.ids_to_string(x[i].detach().to('cpu').numpy()))
-        right_ans = date_obj.strftime("%Y-%m-%d")
+        question, right_ans = train_data.get_random_case()
+        right_ans = train_data.ids_to_string(right_ans)[1:]
         print(train_data.ids_to_string(question).strip(), end='')
 
         question = torch.tensor(question).to(device)
-        predict_ans = model.generate(torch.flip(question.unsqueeze(0), [1]), startid, 5)
+        predict_ans = model.generate(torch.flip(question.unsqueeze(0), [1]), startid, 11)
         predict_ans = train_data.ids_to_string(predict_ans[0][1:].to('cpu').numpy())
         print("={}".format(predict_ans))
-        print("ans:{}  {}".format(right_ans, "x" if right_ans != int(predict_ans) else 'v'))
+        print("ans:{}  {}".format(right_ans, "x" if right_ans != predict_ans else 'v'))
