@@ -21,7 +21,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 # config:
 retrain_and_dump=True
 batch_size = 16
-max_epoch = 200
+max_epoch = 20
 file_name = "attention.pth"
 manual_test_case_size = 10
 
@@ -78,12 +78,14 @@ class Attention(nn.Module) :
         BATCH, ENCODER_SEQ_LEN, HIDDEN_SIZE = hs.shape[0], hs.shape[1], hs.shape[2]
         hs_for_cal = hs.transpose(1, 2)
         results = torch.matmul(ys, hs_for_cal)
-        weights = torch.softmax(results, dim=2)
+        weights = torch.softmax(results, dim=-1)
 
-        hs_unsqueeze = hs.unsqueeze(1).expand(-1, DECODER_SEQ_LEN, -1, -1)
-        weights_broadcast = weights.unsqueeze(3).expand(-1, -1, -1, HIDDEN_SIZE)
-        cal_hs = hs_unsqueeze * weights_broadcast
-        sum_hs = torch.sum(cal_hs, dim=2)
+        # 看起来注释里的和matmul是等效的
+        #hs_unsqueeze = hs.unsqueeze(1).expand(-1, DECODER_SEQ_LEN, -1, -1)
+        #weights_broadcast = weights.unsqueeze(3).expand(-1, -1, -1, HIDDEN_SIZE)
+        #cal_hs = hs_unsqueeze * weights_broadcast
+        #sum_hs = torch.sum(cal_hs, dim=2)
+        sum_hs = torch.matmul(weights, hs)
 
         return sum_hs
 
@@ -139,7 +141,7 @@ class AttentionSeq2Seq(nn.Module) :
 
 model = AttentionSeq2Seq(vocab_size, 128, 256).to(device)
 loss_fn = nn.CrossEntropyLoss(reduction='mean')
-optimizer = Adam(model.parameters(), lr=0.01)
+optimizer = Adam(model.parameters(), lr=0.001)
 scheduler = ExponentialLR(optimizer, gamma=0.9)
 
 if retrain_and_dump :
