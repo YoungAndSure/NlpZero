@@ -10,6 +10,7 @@ import numpy as np
 from dataset import SequenceDataset
 from torch.utils.data import DataLoader
 from torch import nn
+from torch.nn import init
 from torch.nn import Embedding
 from torch.nn import LSTM
 from torch.utils.tensorboard import SummaryWriter
@@ -17,7 +18,7 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
 # config:
-retrain_and_dump=False
+retrain_and_dump=True
 batch_size = 16
 max_epoch = 200
 file_name = "seq2seq.pth"
@@ -56,6 +57,7 @@ class Encoder(nn.Module) :
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, wordvec_size)
         self.lstm = nn.LSTM(input_size=wordvec_size, hidden_size=hidden_size, num_layers=1, batch_first=True)
+        init.xavier_uniform_(self.embedding.weight)
 
     def forward(self, xs) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
@@ -71,6 +73,8 @@ class Decoder(nn.Module) :
         self.embedding = Embedding(vocab_size, wordvec_size)
         self.lstm = LSTM(wordvec_size + hidden_size, hidden_size, num_layers=1, batch_first=True)
         self.affine = nn.Linear(hidden_size + hidden_size, vocab_size)
+        init.xavier_uniform_(self.embedding.weight)
+        init.xavier_uniform_(self.affine.weight)
 
     def forward(self, xs, h) :
         BATCH, SEQ_LEN = xs.shape[0], xs.shape[1]
@@ -166,7 +170,7 @@ with torch.no_grad() :
     char_to_id, id_to_char = train_data.get_vocab()
     startid = char_to_id['_']
     for i in range(manual_test_case_size) :
-        question = train_data.get_random_case()
+        question, t = train_data.get_random_case()
         right_ans = eval(train_data.ids_to_string(question))
         print(train_data.ids_to_string(question).strip(), end='')
 
