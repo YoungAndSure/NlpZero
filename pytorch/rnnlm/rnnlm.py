@@ -27,6 +27,7 @@ max_epoch = 10
 file_name = "rnnlm.pth" if use_ptb else "hello.pth"
 manual_test_case_size = 10 if use_ptb else 1
 write_monitor=False
+open_manual_test=False
 
 writer = SummaryWriter(log_dir='rnnlm_monitor') if write_monitor else None
 
@@ -148,6 +149,7 @@ if retrain_and_dump :
             optimizer.zero_grad()
             iter += 1
         perplexity = np.exp(total_loss / total_token)
+        torch.cuda.synchronize()
         epoch_end = time.perf_counter()
         print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, cost:{:.3f}ms".format(epoch, total_loss / total_token, perplexity, (epoch_end - epoch_start) * 1000))
     save_model(model, file_name)
@@ -177,6 +179,8 @@ with torch.no_grad() :
 recorder.record("test")
 recorder.print_record()
 
+if not open_manual_test :
+    exit()
 with torch.no_grad() :
     model.reset_state()
 
