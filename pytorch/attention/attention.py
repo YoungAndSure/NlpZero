@@ -174,7 +174,7 @@ if retrain_and_dump :
         with torch.no_grad() :
             total_count = 0.0
             right_count = 0.0
-            startid = 6 # '_'
+            startid = 14 # '_'
             for x,t in test_dataloader :
                 x,t = x.to(device),t.to(device)
                 y = model.generate(torch.flip(x, [1]), startid, 11)
