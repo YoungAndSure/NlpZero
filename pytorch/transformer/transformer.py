@@ -25,7 +25,7 @@ class PositionEncoder(nn.Module) :
     y = xs + P
     return y
 
-class TransformerEncoder(nn.Module) :
+class Transformer(nn.Module) :
   def __init__(self, vocab_size, seq_len, wordvec_size) :
     super().__init__()
     self.embedding = nn.Embedding(vocab_size, wordvec_size)
@@ -43,6 +43,6 @@ wordvec_size = 9
 batch_size = 2
 xs = torch.randint(0, vocab_size, (batch_size, seq_len))
 
-encoder = TransformerEncoder(vocab_size, seq_len, wordvec_size)
-encode_output = encoder(xs)
-print(encode_output.shape)
+transformer = Transformer(vocab_size, seq_len, wordvec_size)
+ys = transformer(xs)
+print(ys.shape)
