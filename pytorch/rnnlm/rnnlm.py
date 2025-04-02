@@ -23,7 +23,7 @@ retrain_and_dump=True
 use_ptb=True
 seq_len = 50 if use_ptb else 6
 batch_size = 8 if use_ptb else 1
-max_epoch = 10
+max_epoch = 2
 file_name = "rnnlm.pth" if use_ptb else "hello.pth"
 manual_test_case_size = 10 if use_ptb else 1
 write_monitor=False
@@ -114,8 +114,8 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 recorder.record("prepare")
 
-#with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
-if retrain_and_dump :
+with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
+#if retrain_and_dump :
     for epoch in range(max_epoch) :
         epoch_start = time.perf_counter()
         total_loss = 0.0
@@ -153,8 +153,8 @@ if retrain_and_dump :
         epoch_end = time.perf_counter()
         print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, cost:{:.3f}ms".format(epoch, total_loss / total_token, perplexity, (epoch_end - epoch_start) * 1000))
     save_model(model, file_name)
-#prof.export_chrome_trace("rnnlm_profile.json")
-#print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+prof.export_chrome_trace("rnnlm_profile_maxepoch2.json")
+print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
 recorder.record("train")
 
