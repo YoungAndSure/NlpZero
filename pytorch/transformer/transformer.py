@@ -26,8 +26,8 @@ class PositionEncoder(nn.Module) :
     y = xs + P
     return y
 
-class MultiHeadAttention(nn.Module) :
-  def __init__(self, embed_dim=64, num_heads=8) :
+class SingleHeadAttention(nn.Module) :
+  def __init__(self, embed_dim) :
     super().__init__()
     self.WQ = nn.LazyLinear(embed_dim, dtype=torch.float64)
     self.WK = nn.LazyLinear(embed_dim, dtype=torch.float64)
@@ -53,10 +53,26 @@ class MultiHeadAttention(nn.Module) :
 
     return y
 
+class MultiHeadAttention(nn.Module) :
+  def __init__(self, embed_dim, head_num) :
+    super().__init__()
+    assert(embed_dim // head_num * head_num == embed_dim)
+    self.multi_head_attention = nn.ModuleList([SingleHeadAttention(embed_dim//head_num) for _ in range(head_num)])
+
+  def forward(self, xs) :
+    ys = None
+    for single_head_attention in self.multi_head_attention :
+      if ys is None :
+        ys = single_head_attention(xs)
+      else :
+        ys = torch.concat((ys, single_head_attention(xs)), dim=2)
+    BATCH_SIZE, SEQ_LEN, EMBED_DIM = ys.shape
+    return ys
+
 class TransformerEncoderLayer(nn.Module) :
   def __init__(self) :
     super().__init__()
-    self.multi_head_attention = MultiHeadAttention(embed_dim=128, num_heads=8)
+    self.multi_head_attention = MultiHeadAttention(embed_dim=64, head_num=8)
   
   def forward(self, xs) :
     ys = self.multi_head_attention(xs)
@@ -65,12 +81,10 @@ class TransformerEncoderLayer(nn.Module) :
 class TransformerEncoder(nn.Module) :
   def __init__(self, encoder_layer=1) :
     super().__init__()
-    self.encoder_layer = []
-    for i in range(encoder_layer) :
-      el = TransformerEncoderLayer()
-      self.encoder_layer.append(el)
+    self.encoder_layer = nn.ModuleList([TransformerEncoderLayer() for _ in range(encoder_layer)])
 
   def forward(self, xs) :
+    BATCH_SIZE, SEQ_LEN, WORDVEC_SIZE = xs.shape
     for el in self.encoder_layer :
       ys = el(xs)
       xs = ys
