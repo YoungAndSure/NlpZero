@@ -97,17 +97,24 @@ class TransformerEncoderLayer(nn.Module) :
     super().__init__()
     self.multi_head_attention = MultiHeadAttention(d_model, nhead)
     self.add_norm = AddNorm(d_model)
-    self.ffn = nn.ModuleList(FeedForwardNetwork(dim_feedforward) for _ in range(2))
+    # 先升维，再降维，不然没法做第二次残差了
+    self.ffn1 = FeedForwardNetwork(dim_feedforward)
+    self.ffn2 = FeedForwardNetwork(d_model)
   
   def forward(self, xs) :
     BATCH, SEQ_LEN, D_MODEL = xs.shape
-    ys = self.multi_head_attention(xs)
-    BATCH, SEQ_LEN, D_MODEL = ys.shape
-    assert(xs.shape == ys.shape)
-    ys = self.add_norm(xs, ys)
-    for f in self.ffn :
-      ys = f(ys)
-    return ys
+    ys_multi_head = self.multi_head_attention(xs)
+    BATCH, SEQ_LEN, D_MODEL = ys_multi_head.shape
+    assert(xs.shape == ys_multi_head.shape)
+
+    ys_add_norm1 = self.add_norm(xs, ys_multi_head)
+
+    ys_ffn1 = self.ffn1(ys_add_norm1)
+    ys_ffn2 = self.ffn2(ys_ffn1)
+
+    ys_add_norm2 = self.add_norm(ys_add_norm1, ys_ffn2)
+
+    return ys_add_norm2
 
 class TransformerEncoder(nn.Module) :
   def __init__(self, d_model, nhead, dim_feedforward, encoder_layer) :
@@ -141,7 +148,7 @@ d_model = 64
 dim_feedforward = d_model * 4
 nhead = 8
 batch_size = 2
-encoder_layer = 1
+encoder_layer = 6
 xs = torch.randint(0, vocab_size, (batch_size, seq_len))
 
 transformer = Transformer(vocab_size, d_model, nhead, dim_feedforward, encoder_layer)
