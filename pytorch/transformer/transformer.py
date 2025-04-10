@@ -79,11 +79,25 @@ class AddNorm(nn.Module) :
     ys = self.layer_norm(ys)
     return ys
 
+class FeedForwardNetwork(nn.Module) :
+  def __init__(self, dim_feedforward) :
+    super().__init__()
+    self.linear = nn.LazyLinear(dim_feedforward, dtype=torch.float64)
+    self.activate = nn.ReLU()
+
+  def forward(self, xs) :
+    BATCH, SEQ_LEN, D_MODEL = xs.shape
+    ys = self.linear(xs)
+    BATCH, SEQ_LEN, DIM_FEEDFORWARD = ys.shape
+    ys = self.activate(ys)
+    return ys
+
 class TransformerEncoderLayer(nn.Module) :
-  def __init__(self, d_model, nhead) :
+  def __init__(self, d_model, nhead, dim_feedforward) :
     super().__init__()
     self.multi_head_attention = MultiHeadAttention(d_model, nhead)
     self.add_norm = AddNorm(d_model)
+    self.ffn = nn.ModuleList(FeedForwardNetwork(dim_feedforward) for _ in range(2))
   
   def forward(self, xs) :
     BATCH, SEQ_LEN, D_MODEL = xs.shape
@@ -91,12 +105,14 @@ class TransformerEncoderLayer(nn.Module) :
     BATCH, SEQ_LEN, D_MODEL = ys.shape
     assert(xs.shape == ys.shape)
     ys = self.add_norm(xs, ys)
+    for f in self.ffn :
+      ys = f(ys)
     return ys
 
 class TransformerEncoder(nn.Module) :
-  def __init__(self, d_model, nhead, encoder_layer=1) :
+  def __init__(self, d_model, nhead, dim_feedforward, encoder_layer=1) :
     super().__init__()
-    self.encoder_layer = nn.ModuleList([TransformerEncoderLayer(d_model, nhead) for _ in range(encoder_layer)])
+    self.encoder_layer = nn.ModuleList([TransformerEncoderLayer(d_model, nhead, dim_feedforward) for _ in range(encoder_layer)])
 
   def forward(self, xs) :
     BATCH_SIZE, SEQ_LEN, D_MODEl = xs.shape
@@ -106,11 +122,11 @@ class TransformerEncoder(nn.Module) :
     return ys
 
 class Transformer(nn.Module) :
-  def __init__(self, vocab_size, d_model, nhead) :
+  def __init__(self, vocab_size, d_model, nhead, dim_feedforward) :
     super().__init__()
     self.embedding = nn.Embedding(vocab_size, d_model)
     self.pe = PositionEncoder()
-    self.encoder = TransformerEncoder(d_model, nhead)
+    self.encoder = TransformerEncoder(d_model, nhead, dim_feedforward)
 
   def forward(self, xs) :
     embs = self.embedding(xs)
@@ -122,10 +138,11 @@ class Transformer(nn.Module) :
 vocab_size = 100
 seq_len = 3
 d_model = 64
+dim_feedforward = d_model * 4
 nhead = 8
 batch_size = 2
 xs = torch.randint(0, vocab_size, (batch_size, seq_len))
 
-transformer = Transformer(vocab_size, d_model, nhead)
+transformer = Transformer(vocab_size, d_model, nhead, dim_feedforward)
 ys = transformer(xs)
 print(ys.shape)
