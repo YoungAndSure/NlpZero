@@ -69,16 +69,28 @@ class MultiHeadAttention(nn.Module) :
     BATCH_SIZE, SEQ_LEN, EMBED_DIM = ys.shape
     return ys
 
+class AddNorm(nn.Module) :
+  def __init__(self, d_model) :
+    super().__init__()
+    self.layer_norm = nn.LayerNorm(d_model, dtype=torch.float64)
+
+  def forward(self, xs, ys) :
+    ys += xs
+    ys = self.layer_norm(ys)
+    return ys
+
 class TransformerEncoderLayer(nn.Module) :
   def __init__(self, d_model, nhead) :
     super().__init__()
     self.multi_head_attention = MultiHeadAttention(d_model, nhead)
+    self.add_norm = AddNorm(d_model)
   
   def forward(self, xs) :
     BATCH, SEQ_LEN, D_MODEL = xs.shape
     ys = self.multi_head_attention(xs)
     BATCH, SEQ_LEN, D_MODEL = ys.shape
     assert(xs.shape == ys.shape)
+    ys = self.add_norm(xs, ys)
     return ys
 
 class TransformerEncoder(nn.Module) :
