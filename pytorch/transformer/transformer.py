@@ -35,12 +35,12 @@ class SingleHeadAttention(nn.Module) :
     self.sqrt_embed_dim = math.sqrt(embed_dim)
     self.mask = mask
 
-  def forward(self, xs) :
+  def forward(self, xs, encode=None) :
     BATCH, SEQ_LEN, HIDDEN = xs.shape[0], xs.shape[1], xs.shape[2]
 
-    k = self.WQ(xs)
     q = self.WQ(xs)
-    v = self.WV(xs)
+    k = self.WK(xs) if encode is None else self.WK(encode)
+    v = self.WV(xs) if encode is None else self.WV(encode)
 
     qk = torch.matmul(q, k.transpose(1,2))
     qk = qk / self.sqrt_embed_dim
@@ -65,11 +65,11 @@ class MultiHeadAttention(nn.Module) :
     assert(d_model // nhead * nhead == d_model)
     self.multi_head_attention = nn.ModuleList([SingleHeadAttention(d_model//nhead, mask) for _ in range(nhead)])
 
-  def forward(self, xs) :
+  def forward(self, xs, encode=None) :
     ys = None
     for single_head_attention in self.multi_head_attention :
       if ys is None :
-        ys = single_head_attention(xs)
+        ys = single_head_attention(xs, encode)
       else :
         ys = torch.concat((ys, single_head_attention(xs)), dim=2)
     BATCH_SIZE, SEQ_LEN, EMBED_DIM = ys.shape
@@ -138,9 +138,11 @@ class TransformerDecoderLayer(nn.Module) :
   def __init__(self) :
     super().__init__()
     self.mask_multi_head_attention = MultiHeadAttention(d_model, nhead, True)
+    self.multi_head_attention = MultiHeadAttention(d_model, nhead, False)
 
   def forward(self, encode, xs) :
     ys = self.mask_multi_head_attention(xs)
+    ys = self.multi_head_attention(ys, encode)
     return ys
 
 class TransformerDecoder(nn.Module) :
