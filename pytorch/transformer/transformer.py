@@ -157,15 +157,18 @@ class TransformerDecoderLayer(nn.Module) :
     return ys_add_norm3
 
 class TransformerDecoder(nn.Module) :
-  def __init__(self, d_model, nhead, dim_feedforward, decoder_layer) :
+  def __init__(self, vocab_size, d_model, nhead, dim_feedforward, decoder_layer) :
     super().__init__()
     self.decoder_layer = nn.ModuleList([TransformerDecoderLayer(d_model, nhead, dim_feedforward) for _ in range(decoder_layer)])
+    self.linear = nn.LazyLinear(vocab_size, dtype=torch.float64)
 
   def forward(self, encode, xs) :
     for dl in self.decoder_layer :
       ys = dl(encode, xs)
       xs = ys
-    return ys
+    ys_linear = self.linear(ys)
+    ys_softmax = torch.softmax(ys_linear, dim=2)
+    return ys_softmax
 
 class Transformer(nn.Module) :
   def __init__(self, vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer) :
@@ -174,7 +177,7 @@ class Transformer(nn.Module) :
     self.decode_embedding = nn.Embedding(vocab_size, d_model)
     self.pe = PositionEncoder()
     self.encoder = TransformerEncoder(d_model, nhead, dim_feedforward, encoder_layer)
-    self.decoder = TransformerDecoder(d_model, nhead, dim_feedforward, decoder_layer)
+    self.decoder = TransformerDecoder(vocab_size, d_model, nhead, dim_feedforward, decoder_layer)
 
   def forward(self, xs, ts) :
     encode_embs = self.encode_embedding(xs)
