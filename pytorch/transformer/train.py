@@ -22,6 +22,7 @@ eos = torch.randint(0, vocab_size, (batch_size, 1))
 label = torch.concat((eos, ts), dim=1)
 
 transformer = Transformer(vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer)
+loss+fn = nn.CrossEntropyLoss(reduction="mean")
 
 ys = transformer(xs, decode_input)
 print(ys.shape, label.shape)

@@ -19,7 +19,8 @@ class PositionEncoder(nn.Module) :
         P[pos][2 * i + 1] = np.cos(pos / np.power(10000, (2 * i) / D_MODEL))
       if D_MODEL % 2 != 0 :
         P[pos][D_MODEL - 1] = np.sin(pos / np.power(10000, (D_MODEL - 1) / D_MODEL))
-    P = torch.tensor(np.expand_dims(P, 0))
+    # TODO: 改用tensor的方法实现，不用单独处理
+    P = torch.tensor(np.expand_dims(P, 0)).to('cuda')
 
     assert((xs.shape[1], xs.shape[2]) == (P.shape[1], P.shape[2]))
     # 自动对batch广播
