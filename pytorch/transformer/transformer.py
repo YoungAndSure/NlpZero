@@ -135,20 +135,30 @@ class TransformerEncoder(nn.Module) :
     return ys
 
 class TransformerDecoderLayer(nn.Module) :
-  def __init__(self) :
+  def __init__(self, d_model, nhead, dim_feedforward) :
     super().__init__()
     self.mask_multi_head_attention = MultiHeadAttention(d_model, nhead, True)
+    self.add_norm1 = AddNorm(d_model)
     self.multi_head_attention = MultiHeadAttention(d_model, nhead, False)
+    self.add_norm2 = AddNorm(d_model)
+    self.ffn1 = FeedForwardNetwork(dim_feedforward)
+    self.ffn2 = FeedForwardNetwork(d_model)
+    self.add_norm3 = AddNorm(d_model)
 
   def forward(self, encode, xs) :
-    ys = self.mask_multi_head_attention(xs)
-    ys = self.multi_head_attention(ys, encode)
-    return ys
+    ys_mask_multi_head = self.mask_multi_head_attention(xs)
+    ys_add_norm1 = self.add_norm1(xs, ys_mask_multi_head)
+    ys_multi_head = self.multi_head_attention(ys_add_norm1, encode)
+    ys_add_norm2 = self.add_norm2(ys_add_norm1, ys_multi_head)
+    ys_ffn1 = self.ffn1(ys_add_norm2)
+    ys_ffn2 = self.ffn2(ys_ffn1)
+    ys_add_norm3 = self.add_norm3(ys_add_norm2, ys_ffn2)
+    return ys_add_norm3
 
 class TransformerDecoder(nn.Module) :
-  def __init__(self, decoder_layer) :
+  def __init__(self, d_model, nhead, dim_feedforward, decoder_layer) :
     super().__init__()
-    self.decoder_layer = nn.ModuleList([TransformerDecoderLayer() for _ in range(decoder_layer)])
+    self.decoder_layer = nn.ModuleList([TransformerDecoderLayer(d_model, nhead, dim_feedforward) for _ in range(decoder_layer)])
 
   def forward(self, encode, xs) :
     for dl in self.decoder_layer :
@@ -163,7 +173,7 @@ class Transformer(nn.Module) :
     self.decode_embedding = nn.Embedding(vocab_size, d_model)
     self.pe = PositionEncoder()
     self.encoder = TransformerEncoder(d_model, nhead, dim_feedforward, encoder_layer)
-    self.decoder = TransformerDecoder(decoder_layer)
+    self.decoder = TransformerDecoder(d_model, nhead, dim_feedforward, decoder_layer)
 
   def forward(self, xs, ts) :
     encode_embs = self.encode_embedding(xs)
