@@ -86,17 +86,22 @@ class AddNorm(nn.Module) :
     return ys
 
 class FeedForwardNetwork(nn.Module) :
-  def __init__(self, dim_feedforward) :
+  def __init__(self, d_model, dim_feedforward) :
     super().__init__()
-    self.linear = nn.LazyLinear(dim_feedforward, dtype=torch.float64)
-    self.activate = nn.ReLU()
+    self.linear1 = nn.LazyLinear(dim_feedforward, dtype=torch.float64)
+    self.activate1 = nn.ReLU()
+    self.linear2 = nn.LazyLinear(d_model, dtype=torch.float64)
+    self.activate2 = nn.ReLU()
 
   def forward(self, xs) :
     BATCH, SEQ_LEN, D_MODEL = xs.shape
-    ys = self.linear(xs)
-    BATCH, SEQ_LEN, DIM_FEEDFORWARD = ys.shape
-    ys = self.activate(ys)
-    return ys
+    ys_linear1 = self.linear1(xs)
+    BATCH, SEQ_LEN, DIM_FEEDFORWARD = ys_linear1.shape
+    ys_activate1 = self.activate1(ys_linear1)
+
+    ys_linear2 = self.linear2(ys_activate1)
+    ys_activate2 = self.activate2(ys_linear2)
+    return ys_activate2
 
 class TransformerEncoderLayer(nn.Module) :
   def __init__(self, d_model, nhead, dim_feedforward) :
@@ -104,8 +109,7 @@ class TransformerEncoderLayer(nn.Module) :
     self.multi_head_attention = MultiHeadAttention(d_model, nhead, False)
     self.add_norm = AddNorm(d_model)
     # 先升维，再降维，不然没法做第二次残差了
-    self.ffn1 = FeedForwardNetwork(dim_feedforward)
-    self.ffn2 = FeedForwardNetwork(d_model)
+    self.ffn = FeedForwardNetwork(d_model, dim_feedforward)
   
   def forward(self, xs) :
     BATCH, SEQ_LEN, D_MODEL = xs.shape
@@ -115,10 +119,9 @@ class TransformerEncoderLayer(nn.Module) :
 
     ys_add_norm1 = self.add_norm(xs, ys_multi_head)
 
-    ys_ffn1 = self.ffn1(ys_add_norm1)
-    ys_ffn2 = self.ffn2(ys_ffn1)
+    ys_ffn = self.ffn(ys_add_norm1)
 
-    ys_add_norm2 = self.add_norm(ys_add_norm1, ys_ffn2)
+    ys_add_norm2 = self.add_norm(ys_add_norm1, ys_ffn)
 
     return ys_add_norm2
 
@@ -141,8 +144,7 @@ class TransformerDecoderLayer(nn.Module) :
     self.add_norm1 = AddNorm(d_model)
     self.multi_head_attention = MultiHeadAttention(d_model, nhead, False)
     self.add_norm2 = AddNorm(d_model)
-    self.ffn1 = FeedForwardNetwork(dim_feedforward)
-    self.ffn2 = FeedForwardNetwork(d_model)
+    self.ffn = FeedForwardNetwork(d_model, dim_feedforward)
     self.add_norm3 = AddNorm(d_model)
 
   def forward(self, encode, xs) :
@@ -150,9 +152,8 @@ class TransformerDecoderLayer(nn.Module) :
     ys_add_norm1 = self.add_norm1(xs, ys_mask_multi_head)
     ys_multi_head = self.multi_head_attention(ys_add_norm1, encode)
     ys_add_norm2 = self.add_norm2(ys_add_norm1, ys_multi_head)
-    ys_ffn1 = self.ffn1(ys_add_norm2)
-    ys_ffn2 = self.ffn2(ys_ffn1)
-    ys_add_norm3 = self.add_norm3(ys_add_norm2, ys_ffn2)
+    ys_ffn = self.ffn(ys_add_norm2)
+    ys_add_norm3 = self.add_norm3(ys_add_norm2, ys_ffn)
     return ys_add_norm3
 
 class TransformerDecoder(nn.Module) :
