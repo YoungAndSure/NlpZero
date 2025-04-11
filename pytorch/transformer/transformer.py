@@ -27,12 +27,13 @@ class PositionEncoder(nn.Module) :
     return y
 
 class SingleHeadAttention(nn.Module) :
-  def __init__(self, embed_dim) :
+  def __init__(self, embed_dim, mask=False) :
     super().__init__()
     self.WQ = nn.LazyLinear(embed_dim, dtype=torch.float64)
     self.WK = nn.LazyLinear(embed_dim, dtype=torch.float64)
     self.WV = nn.LazyLinear(embed_dim, dtype=torch.float64)
     self.sqrt_embed_dim = math.sqrt(embed_dim)
+    self.mask = mask
 
   def forward(self, xs) :
     BATCH, SEQ_LEN, HIDDEN = xs.shape[0], xs.shape[1], xs.shape[2]
@@ -43,6 +44,11 @@ class SingleHeadAttention(nn.Module) :
 
     qk = torch.matmul(q, k.transpose(1,2))
     qk = qk / self.sqrt_embed_dim
+    
+    if self.mask :
+      assert(qk.shape[1] == qk.shape[2])
+      mask = torch.triu(torch.ones(SEQ_LEN, SEQ_LEN), diagonal=1).bool()
+      qk[mask.broadcast_to(BATCH, mask.shape[0], mask.shape[1])] = -torch.inf
 
     qk_softmax = torch.softmax(qk, dim=2)
 
@@ -54,10 +60,10 @@ class SingleHeadAttention(nn.Module) :
     return y
 
 class MultiHeadAttention(nn.Module) :
-  def __init__(self, d_model, nhead) :
+  def __init__(self, d_model, nhead, mask=False) :
     super().__init__()
     assert(d_model // nhead * nhead == d_model)
-    self.multi_head_attention = nn.ModuleList([SingleHeadAttention(d_model//nhead) for _ in range(nhead)])
+    self.multi_head_attention = nn.ModuleList([SingleHeadAttention(d_model//nhead, mask) for _ in range(nhead)])
 
   def forward(self, xs) :
     ys = None
@@ -95,7 +101,7 @@ class FeedForwardNetwork(nn.Module) :
 class TransformerEncoderLayer(nn.Module) :
   def __init__(self, d_model, nhead, dim_feedforward) :
     super().__init__()
-    self.multi_head_attention = MultiHeadAttention(d_model, nhead)
+    self.multi_head_attention = MultiHeadAttention(d_model, nhead, False)
     self.add_norm = AddNorm(d_model)
     # 先升维，再降维，不然没法做第二次残差了
     self.ffn1 = FeedForwardNetwork(dim_feedforward)
@@ -131,10 +137,11 @@ class TransformerEncoder(nn.Module) :
 class TransformerDecoderLayer(nn.Module) :
   def __init__(self) :
     super().__init__()
-    pass
+    self.mask_multi_head_attention = MultiHeadAttention(d_model, nhead, True)
 
   def forward(self, encode, xs) :
-    pass
+    ys = self.mask_multi_head_attention(xs)
+    return ys
 
 class TransformerDecoder(nn.Module) :
   def __init__(self, decoder_layer) :
