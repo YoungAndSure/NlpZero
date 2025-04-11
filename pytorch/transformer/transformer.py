@@ -128,19 +128,46 @@ class TransformerEncoder(nn.Module) :
       xs = ys
     return ys
 
-class Transformer(nn.Module) :
-  def __init__(self, vocab_size, d_model, nhead, dim_feedforward, encoder_layer) :
+class TransformerDecoderLayer(nn.Module) :
+  def __init__(self) :
     super().__init__()
-    self.embedding = nn.Embedding(vocab_size, d_model)
+    pass
+
+  def forward(self, encode, xs) :
+    pass
+
+class TransformerDecoder(nn.Module) :
+  def __init__(self, decoder_layer) :
+    super().__init__()
+    self.decoder_layer = nn.ModuleList([TransformerDecoderLayer() for _ in range(decoder_layer)])
+
+  def forward(self, encode, xs) :
+    for dl in self.decoder_layer :
+      ys = dl(encode, xs)
+      xs = ys
+    return ys
+
+class Transformer(nn.Module) :
+  def __init__(self, vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer) :
+    super().__init__()
+    self.encode_embedding = nn.Embedding(vocab_size, d_model)
+    self.decode_embedding = nn.Embedding(vocab_size, d_model)
     self.pe = PositionEncoder()
     self.encoder = TransformerEncoder(d_model, nhead, dim_feedforward, encoder_layer)
+    self.decoder = TransformerDecoder(decoder_layer)
 
-  def forward(self, xs) :
-    embs = self.embedding(xs)
-    embs_with_pe = self.pe(embs)
-    encode = self.encoder(embs_with_pe)
+  def forward(self, xs, ts) :
+    encode_embs = self.encode_embedding(xs)
+    encode_embs_with_pe = self.pe(encode_embs)
+    encode = self.encoder(encode_embs_with_pe)
 
-    return encode
+    sos = torch.randint(0, vocab_size, (batch_size, 1))
+    decode_xs = torch.concat((sos, ts), dim=1)
+    decode_embs = self.decode_embedding(decode_xs)
+    decode_embs_with_pe = self.pe(decode_embs)
+    decode = self.decoder(encode, decode_embs_with_pe)
+
+    return decode
 
 vocab_size = 100
 seq_len = 3
@@ -149,8 +176,10 @@ dim_feedforward = d_model * 4
 nhead = 8
 batch_size = 2
 encoder_layer = 6
+decoder_layer = 1
 xs = torch.randint(0, vocab_size, (batch_size, seq_len))
+ts = torch.randint(0, vocab_size, (batch_size, seq_len))
 
-transformer = Transformer(vocab_size, d_model, nhead, dim_feedforward, encoder_layer)
-ys = transformer(xs)
+transformer = Transformer(vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer)
+ys = transformer(xs, ts)
 print(ys.shape)
