@@ -195,7 +195,7 @@ dim_feedforward = d_model * 4
 nhead = 8
 batch_size = 2
 encoder_layer = 6
-decoder_layer = 1
+decoder_layer = 6
 xs = torch.randint(0, vocab_size, (batch_size, seq_len))
 ts = torch.randint(0, vocab_size, (batch_size, seq_len))
 
