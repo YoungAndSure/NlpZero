@@ -168,7 +168,8 @@ class TransformerDecoder(nn.Module) :
       xs = ys
     ys_linear = self.linear(ys)
     ys_softmax = torch.softmax(ys_linear, dim=2)
-    return ys_softmax
+    ys_argmax = torch.argmax(ys_softmax, dim=2)
+    return ys_argmax
 
 class Transformer(nn.Module) :
   def __init__(self, vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer) :
@@ -184,9 +185,7 @@ class Transformer(nn.Module) :
     encode_embs_with_pe = self.pe(encode_embs)
     encode = self.encoder(encode_embs_with_pe)
 
-    sos = torch.randint(0, vocab_size, (batch_size, 1))
-    decode_xs = torch.concat((sos, ts), dim=1)
-    decode_embs = self.decode_embedding(decode_xs)
+    decode_embs = self.decode_embedding(ts)
     decode_embs_with_pe = self.pe(decode_embs)
     decode = self.decoder(encode, decode_embs_with_pe)
 
@@ -202,7 +201,12 @@ encoder_layer = 6
 decoder_layer = 6
 xs = torch.randint(0, vocab_size, (batch_size, seq_len))
 ts = torch.randint(0, vocab_size, (batch_size, seq_len))
+sos = torch.randint(0, vocab_size, (batch_size, 1))
+decode_input = torch.concat((sos, ts), dim=1)
+eos = torch.randint(0, vocab_size, (batch_size, 1))
+label = torch.concat((eos, ts), dim=1)
 
 transformer = Transformer(vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer)
-ys = transformer(xs, ts)
-print(ys.shape)
+
+ys = transformer(xs, decode_input)
+print(ys.shape, label.shape)
