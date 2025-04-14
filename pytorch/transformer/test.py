@@ -130,4 +130,4 @@ with torch.no_grad() :
         predict_ans = model.generate(torch.flip(question.unsqueeze(0), [1]), startid, 11)
         predict_ans = train_data.ids_to_string(predict_ans[0][1:].to('cpu').numpy())
         print("={}".format(predict_ans))
-        p
+        print("ans:{}  {}".format(right_ans, "x" if right_ans != predict_ans else 'v'))

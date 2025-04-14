@@ -82,7 +82,7 @@ class AddNorm(nn.Module) :
     self.layer_norm = nn.LayerNorm(d_model, dtype=torch.float64)
 
   def forward(self, xs, ys) :
-    ys += xs
+    ys = ys + xs
     ys = self.layer_norm(ys)
     return ys
 
@@ -168,9 +168,10 @@ class TransformerDecoder(nn.Module) :
       ys = dl(encode, xs)
       xs = ys
     ys_linear = self.linear(ys)
-    ys_softmax = torch.softmax(ys_linear, dim=2)
-    ys_argmax = torch.argmax(ys_softmax, dim=2)
-    return ys_argmax
+    # NOTE:nn.CrossEntropyLoss输入要求是logit，不能在这softmax
+    #ys_softmax = torch.softmax(ys_linear, dim=2)
+    #ys_argmax = torch.argmax(ys_softmax, dim=2)
+    return ys_linear
 
 class Transformer(nn.Module) :
   def __init__(self, vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer) :
