@@ -192,3 +192,30 @@ class Transformer(nn.Module) :
     decode = self.decoder(encode, decode_embs_with_pe)
 
     return decode
+
+  def generate(self, xs, startid, max_seq_len, endid=None) :
+    encode_embs = self.encode_embedding(xs)
+    encode_embs_with_pe = self.pe(encode_embs)
+    encode = self.encoder(encode_embs_with_pe)
+
+    ts = torch.tensor(startid).broadcast_to(xs.shape[0], 1).to('cuda')
+    decode_embs = self.decode_embedding(ts)
+    decode_embs_with_pe = self.pe(decode_embs)
+    decode = self.decoder(encode, decode_embs_with_pe)
+
+    ys_softmax = torch.softmax(decode, dim=2)
+    ys_argmax = torch.argmax(ys_softmax, dim=2)
+
+    ts = torch.concat((ts, ys_argmax), dim=1)
+
+    while ts.shape[1] < max_seq_len:
+      decode_embs = self.decode_embedding(ts)
+      decode_embs_with_pe = self.pe(decode_embs)
+      decode = self.decoder(encode, decode_embs_with_pe)
+
+      ys_softmax = torch.softmax(decode, dim=2)
+      ys_argmax = torch.argmax(ys_softmax, dim=2)
+
+      ts = torch.concat((ts, ys_argmax), dim=1)
+
+    return ts
