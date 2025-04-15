@@ -19,17 +19,20 @@ from transformer import Transformer
 
 # config:
 retrain_and_dump=True
-batch_size = 16
-max_epoch = 20
+batch_size = 1
+max_epoch = 1
 file_name = "transformer.pth"
 manual_test_case_size = 10
 
 # start
 recorder = CostRecorder()
 
-train_data = SequenceDataset(data_type="train", data_name="date.txt") 
-test_data = SequenceDataset(data_type="test", data_name="date.txt")
+train_data = SequenceDataset(data_type="train", data_name="date.txt", add_eos=True) 
+test_data = SequenceDataset(data_type="test", data_name="date.txt", add_eos=True)
 vocab_size = train_data.vocab_size()
+
+startid = train_data.c2i('_')
+endid = train_data.c2i('.')
 
 recorder.record("dataset")
 
@@ -79,7 +82,11 @@ if retrain_and_dump :
         for x,t in train_dataloader :
             x,t = x.to(device),t.to(device)
             optimizer.zero_grad()
-            y = model(torch.flip(x, [1]), t[:,:-1])
+            # september 27, 1994           _1994-09-27.
+            # x = "september 27, 1994           "
+            # t = "_1994-09-27"
+            y = model(x, t[:, :-1])
+            # label:1994-09-27.
             loss = loss_fn(y.reshape(-1, vocab_size), t[:,1:].reshape(-1))
             loss.backward()
             optimizer.step()
@@ -94,10 +101,9 @@ if retrain_and_dump :
         with torch.no_grad() :
             total_count = 0.0
             right_count = 0.0
-            startid = 14 # '_'
             for x,t in test_dataloader :
                 x,t = x.to(device),t.to(device)
-                y = model.generate(torch.flip(x, [1]), startid, 11)
+                y = model.generate(x, startid, 12, endid)
                 for i in range(x.shape[0]) :
                     right_ans = train_data.ids_to_string(t[i][1:].detach().to('cpu').numpy())
                     predict_ans = train_data.ids_to_string(y[i][1:].detach().to('cpu').numpy())
@@ -127,7 +133,7 @@ with torch.no_grad() :
         print(train_data.ids_to_string(question).strip(), end='')
 
         question = torch.tensor(question).to(device)
-        predict_ans = model.generate(torch.flip(question.unsqueeze(0), [1]), startid, 11)
+        predict_ans = model.generate(question.unsqueeze(0), startid, 12, endid)
         predict_ans = train_data.ids_to_string(predict_ans[0][1:].to('cpu').numpy())
         print("={}".format(predict_ans))
         print("ans:{}  {}".format(right_ans, "x" if right_ans != predict_ans else 'v'))

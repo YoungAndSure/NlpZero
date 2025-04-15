@@ -9,8 +9,8 @@ from torch.utils.data import Dataset
 import numpy as np
 
 class SequenceDataset(Dataset):
-    def __init__(self, data_type='train', data_name='addition.txt'):
-      (x_train, t_train), (x_test, t_test) = load_data(data_name)
+    def __init__(self, data_type='train', data_name='addition.txt', add_eos=False):
+      (x_train, t_train), (x_test, t_test) = load_data(data_name, add_eos=add_eos)
       if data_type == 'train' :
          self.xs = x_train
          self.ts = t_train
@@ -35,6 +35,9 @@ class SequenceDataset(Dataset):
     def get_random_case(self) :
       index = np.random.randint(0, len(self.xs))
       return self.xs[index], self.ts[index]
+
+    def c2i(self, id) :
+      return self.char_to_id[id]
 
     def ids_to_string(self, ids, d='') :
       string = []

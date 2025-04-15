@@ -160,7 +160,6 @@ if retrain_and_dump :
             x,t = x.to(device),t.to(device)
             optimizer.zero_grad()
             y = model(torch.flip(x, [1]), t[:,:-1])
-            print(y.shape, y.reshape(-1, vocab_size).shape, t[:,1:].shape)
             loss = loss_fn(y.reshape(-1, vocab_size), t[:,1:].reshape(-1))
             loss.backward()
             optimizer.step()

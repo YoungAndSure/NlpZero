@@ -19,7 +19,7 @@ def _update_vocab(txt):
             id_to_char[tmp_id] = char
 
 
-def load_data(file_name='addition.txt', seed=1984):
+def load_data(file_name='addition.txt', seed=1984, add_eos=False):
     file_path = os.path.dirname(os.path.abspath(__file__)) + '/' + file_name
 
     if not os.path.exists(file_path):
@@ -31,7 +31,10 @@ def load_data(file_name='addition.txt', seed=1984):
     for line in open(file_path, 'r'):
         idx = line.find('_')
         questions.append(line[:idx])
-        answers.append(line[idx:-1])
+        if add_eos :
+            answers.append(line[idx:-1] + '.')
+        else :
+            answers.append(line[idx:-1])
 
     # create vocab dict
     for i in range(len(questions)):
