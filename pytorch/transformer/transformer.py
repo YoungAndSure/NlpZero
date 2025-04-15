@@ -26,11 +26,11 @@ class PositionEncoder(nn.Module) :
     return y
 
 class SingleHeadAttention(nn.Module) :
-  def __init__(self, embed_dim, mask=False) :
+  def __init__(self, d_model, embed_dim, mask=False) :
     super().__init__()
-    self.WQ = nn.LazyLinear(embed_dim, dtype=torch.float64)
-    self.WK = nn.LazyLinear(embed_dim, dtype=torch.float64)
-    self.WV = nn.LazyLinear(embed_dim, dtype=torch.float64)
+    self.WQ = nn.Linear(d_model, embed_dim, dtype=torch.float64)
+    self.WK = nn.Linear(d_model, embed_dim, dtype=torch.float64)
+    self.WV = nn.Linear(d_model, embed_dim, dtype=torch.float64)
     self.sqrt_embed_dim = math.sqrt(embed_dim)
     self.mask = mask
 
@@ -46,7 +46,7 @@ class SingleHeadAttention(nn.Module) :
     
     if self.mask :
       assert(qk.shape[1] == qk.shape[2])
-      mask = torch.triu(torch.ones(SEQ_LEN, SEQ_LEN), diagonal=1).bool()
+      mask = torch.triu(torch.ones(SEQ_LEN, SEQ_LEN, device=xs.device), diagonal=1).bool()
       qk[mask.broadcast_to(BATCH, mask.shape[0], mask.shape[1])] = -torch.inf
 
     qk_softmax = torch.softmax(qk, dim=2)
@@ -62,7 +62,7 @@ class MultiHeadAttention(nn.Module) :
   def __init__(self, d_model, nhead, mask=False) :
     super().__init__()
     assert(d_model // nhead * nhead == d_model)
-    self.multi_head_attention = nn.ModuleList([SingleHeadAttention(d_model//nhead, mask) for _ in range(nhead)])
+    self.multi_head_attention = nn.ModuleList([SingleHeadAttention(d_model, d_model//nhead, mask) for _ in range(nhead)])
 
   def forward(self, xs, encode=None) :
     ys = None
