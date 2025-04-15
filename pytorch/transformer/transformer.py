@@ -12,19 +12,17 @@ class PositionEncoder(nn.Module) :
   def forward(self, xs) :
     BATCH, SEQ_LEN, D_MODEL = xs.shape[0], xs.shape[1], xs.shape[2]
 
-    P = np.zeros((SEQ_LEN, D_MODEL))
+    P = torch.zeros((SEQ_LEN, D_MODEL), dtype=torch.float64, device=xs.device)
     for pos in range(SEQ_LEN) :
       for i in range(D_MODEL // 2) :
-        P[pos][2 * i] = np.sin(pos / np.power(10000, (2 * i) / D_MODEL))
-        P[pos][2 * i + 1] = np.cos(pos / np.power(10000, (2 * i) / D_MODEL))
+        P[pos][2 * i] = torch.sin(torch.tensor(pos / (10000 ** (2 * i) / D_MODEL), device=xs.device))
+        P[pos][2 * i + 1] = torch.cos(torch.tensor(pos / (10000 ** (2 * i) / D_MODEL), device=xs.device))
       if D_MODEL % 2 != 0 :
-        P[pos][D_MODEL - 1] = np.sin(pos / np.power(10000, (D_MODEL - 1) / D_MODEL))
-    # TODO: 改用tensor的方法实现，不用单独处理
-    P = torch.tensor(np.expand_dims(P, 0)).to('cuda')
+        P[pos][D_MODEL - 1] = torch.sin(torch.tensor(pos / (10000 ** (D_MODEL - 1) / D_MODEL), device=xs.device))
 
-    assert((xs.shape[1], xs.shape[2]) == (P.shape[1], P.shape[2]))
+    assert((xs.shape[1], xs.shape[2]) == (P.shape[0], P.shape[1]))
     # 自动对batch广播
-    y = xs + P
+    y = xs + P.unsqueeze(0).broadcast_to(BATCH, SEQ_LEN, D_MODEL)
     return y
 
 class SingleHeadAttention(nn.Module) :
