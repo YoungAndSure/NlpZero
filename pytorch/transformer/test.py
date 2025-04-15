@@ -19,8 +19,8 @@ from transformer import Transformer
 
 # config:
 retrain_and_dump=True
-batch_size = 1
-max_epoch = 1
+batch_size = 32
+max_epoch = 10
 file_name = "transformer.pth"
 manual_test_case_size = 10
 
