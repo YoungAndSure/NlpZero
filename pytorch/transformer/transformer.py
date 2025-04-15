@@ -85,12 +85,12 @@ class AddNorm(nn.Module) :
     return ys
 
 class FeedForwardNetwork(nn.Module) :
+  # formula: FFN(x) = max(0, x * W1 + b1) * W2 + b2
   def __init__(self, d_model, dim_feedforward) :
     super().__init__()
     self.linear1 = nn.LazyLinear(dim_feedforward, dtype=torch.float64)
     self.activate1 = nn.ReLU()
     self.linear2 = nn.LazyLinear(d_model, dtype=torch.float64)
-    self.activate2 = nn.ReLU()
 
   def forward(self, xs) :
     BATCH, SEQ_LEN, D_MODEL = xs.shape
@@ -99,8 +99,7 @@ class FeedForwardNetwork(nn.Module) :
     ys_activate1 = self.activate1(ys_linear1)
 
     ys_linear2 = self.linear2(ys_activate1)
-    ys_activate2 = self.activate2(ys_linear2)
-    return ys_activate2
+    return ys_linear2
 
 class TransformerEncoderLayer(nn.Module) :
   def __init__(self, d_model, nhead, dim_feedforward) :
