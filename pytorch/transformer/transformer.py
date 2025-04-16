@@ -25,54 +25,56 @@ class PositionEncoder(nn.Module) :
     y = xs + P.unsqueeze(0).broadcast_to(BATCH, SEQ_LEN, D_MODEL)
     return y
 
-class SingleHeadAttention(nn.Module) :
-  def __init__(self, d_model, embed_dim, mask=False) :
-    super().__init__()
-    self.WQ = nn.Linear(d_model, embed_dim, dtype=torch.float64)
-    self.WK = nn.Linear(d_model, embed_dim, dtype=torch.float64)
-    self.WV = nn.Linear(d_model, embed_dim, dtype=torch.float64)
-    self.sqrt_embed_dim = math.sqrt(embed_dim)
-    self.mask = mask
-
-  def forward(self, xs, encode=None) :
-    BATCH, SEQ_LEN, HIDDEN = xs.shape[0], xs.shape[1], xs.shape[2]
-
-    q = self.WQ(xs)
-    k = self.WK(xs) if encode is None else self.WK(encode)
-    v = self.WV(xs) if encode is None else self.WV(encode)
-
-    qk = torch.matmul(q, k.transpose(1,2))
-    qk = qk / self.sqrt_embed_dim
-    
-    if self.mask :
-      assert(qk.shape[1] == qk.shape[2])
-      mask = torch.triu(torch.ones(SEQ_LEN, SEQ_LEN, device=xs.device), diagonal=1).bool()
-      qk[mask.broadcast_to(BATCH, mask.shape[0], mask.shape[1])] = -torch.inf
-
-    qk_softmax = torch.softmax(qk, dim=2)
-
-    BATCH, SEQ_LEN, SEQ_LEN = qk_softmax.shape[0], qk_softmax.shape[1], qk_softmax.shape[2]
-    BATCH, SEQ_LEN, EMBED_DIM = v.shape[0], v.shape[1], v.shape[2]
-
-    y = torch.matmul(qk_softmax, v)
-
-    return y
-
 class MultiHeadAttention(nn.Module) :
   def __init__(self, d_model, nhead, mask=False) :
     super().__init__()
     assert(d_model // nhead * nhead == d_model)
-    self.multi_head_attention = nn.ModuleList([SingleHeadAttention(d_model, d_model//nhead, mask) for _ in range(nhead)])
+    self.nhead = nhead
+    self.d_k = d_model // nhead
+    self.WQ = nn.Linear(d_model, d_model, dtype=torch.float64, bias=False)
+    self.WK = nn.Linear(d_model, d_model, dtype=torch.float64, bias=False)
+    self.WV = nn.Linear(d_model, d_model, dtype=torch.float64, bias=False)
+    self.fc = nn.Linear(d_model, d_model, dtype=torch.float64)
+    self.sqrt_embed_dim = math.sqrt(self.d_k)
+    self.mask = mask
 
-  def forward(self, xs, encode=None) :
-    ys = None
-    for single_head_attention in self.multi_head_attention :
-      if ys is None :
-        ys = single_head_attention(xs, encode)
-      else :
-        ys = torch.concat((ys, single_head_attention(xs)), dim=2)
-    BATCH_SIZE, SEQ_LEN, EMBED_DIM = ys.shape
-    return ys
+  def forward(self, Q, K, V) :
+    # qkv.shape 在encoder中相同，在decoder中，kv.shape相同，q.shape和kv.shape不同
+    assert(K.shape == V.shape), "{}, {}".format(K.shape, V.shape)
+    BATCH, Q_SEQ_LEN, D_MODEL = Q.shape
+    BATCH, KV_SEQ_LEN, D_MODEL = K.shape
+
+    q = self.WQ(Q)
+    k = self.WK(K)
+    v = self.WV(V)
+
+    multi_head_q = q.view(BATCH, Q_SEQ_LEN, self.nhead, self.d_k).transpose(1, 2) # BATCH, nhead, Q_SEQ_LEN, d_k
+    multi_head_k = k.view(BATCH, KV_SEQ_LEN, self.nhead, self.d_k).transpose(1, 2) # BATCH, nhead, KV_SEQ_LEN, d_k
+    multi_head_v = v.view(BATCH, KV_SEQ_LEN, self.nhead, self.d_k).transpose(1, 2)
+
+    multi_head_qk = torch.matmul(multi_head_q, multi_head_k.transpose(2, 3))
+    multi_head_qk = multi_head_qk / self.sqrt_embed_dim
+
+    BATCH, N_HEAD, Q_SEQ_LEN, KV_SEQ_LEN = multi_head_qk.shape
+
+    if self.mask :
+      mask = torch.triu(torch.ones(Q_SEQ_LEN, KV_SEQ_LEN, device=multi_head_qk.device), diagonal=1).bool()
+      multi_head_qk[mask.broadcast_to(BATCH, self.nhead, mask.shape[0], mask.shape[1])] = -torch.inf
+
+    multi_head_qk_softmax = torch.softmax(multi_head_qk, dim=-1)
+
+    BATCH, N_HEAD, Q_SEQ_LEN, KV_SEQ_LEN = multi_head_qk_softmax.shape
+    BATCH, N_HEAD, KV_SEQ_LEN, EMBED_DIM = multi_head_v.shape
+
+    y = torch.matmul(multi_head_qk_softmax, multi_head_v)
+    BATCH, N_HEAD, Q_SEQ_LEN, EMBED_DIM = y.shape
+
+    y = y.transpose(1, 2)
+    BATCH, Q_SEQ_LEN, N_HEAD, EMBED_DIM = y.shape
+    y = y.reshape(BATCH, Q_SEQ_LEN, D_MODEL)
+    y = self.fc(y)
+
+    return y
 
 class AddNorm(nn.Module) :
   def __init__(self, d_model) :
@@ -111,7 +113,7 @@ class TransformerEncoderLayer(nn.Module) :
   
   def forward(self, xs) :
     BATCH, SEQ_LEN, D_MODEL = xs.shape
-    ys_multi_head = self.multi_head_attention(xs)
+    ys_multi_head = self.multi_head_attention(xs, xs, xs)
     BATCH, SEQ_LEN, D_MODEL = ys_multi_head.shape
     assert(xs.shape == ys_multi_head.shape)
 
@@ -146,9 +148,9 @@ class TransformerDecoderLayer(nn.Module) :
     self.add_norm3 = AddNorm(d_model)
 
   def forward(self, encode, xs) :
-    ys_mask_multi_head = self.mask_multi_head_attention(xs)
+    ys_mask_multi_head = self.mask_multi_head_attention(xs, xs, xs)
     ys_add_norm1 = self.add_norm1(xs, ys_mask_multi_head)
-    ys_multi_head = self.multi_head_attention(ys_add_norm1, encode)
+    ys_multi_head = self.multi_head_attention(ys_add_norm1, encode, encode) # Q=ys_add_norm1, K=encode, V=encode
     ys_add_norm2 = self.add_norm2(ys_add_norm1, ys_multi_head)
     ys_ffn = self.ffn(ys_add_norm2)
     ys_add_norm3 = self.add_norm3(ys_add_norm2, ys_ffn)
