@@ -1,28 +1,38 @@
 #! python3
 
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+
 import torch
 from torch import nn
 import numpy as np
 import math
-from transformer import Transformer
+from dataset import RedgptDataset
+from torch.utils.data import DataLoader
 
-vocab_size = 100
-seq_len = 3
-d_model = 64
-dim_feedforward = d_model * 4
-nhead = 8
-batch_size = 2
-encoder_layer = 6
-decoder_layer = 6
-xs = torch.randint(0, vocab_size, (batch_size, seq_len))
-ts = torch.randint(0, vocab_size, (batch_size, seq_len))
-sos = torch.randint(0, vocab_size, (batch_size, 1))
-decode_input = torch.concat((sos, ts), dim=1)
-eos = torch.randint(0, vocab_size, (batch_size, 1))
-label = torch.concat((eos, ts), dim=1)
+batch_size = 32
 
-transformer = Transformer(vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer)
-loss+fn = nn.CrossEntropyLoss(reduction="mean")
+data_path = "/home/youngsure/Code/RedGPT/RedGPT-Dataset-V1-CN.json"
+train_data = RedgptDataset(data_path, data_type="train", add_eos=True) 
+test_data = RedgptDataset(data_path, data_type="test", add_eos=True)
+vocab_size = train_data.vocab_size()
 
-ys = transformer(xs, decode_input)
-print(ys.shape, label.shape)
+train_dataloader = DataLoader(train_data, batch_size=batch_size)
+test_dataloader = DataLoader(test_data, batch_size=batch_size)
+
+print()
+print("---------dataset message---------")
+print("vocab_size:", vocab_size)
+print("train data size:", len(train_dataloader) * batch_size)
+print("test data size", len(test_dataloader) * batch_size)
+for x,t in train_dataloader:
+    print(f"Shape of train X [BATCH, H]: {x.shape}")
+    print(f"Shape of train T [BATCH, H]: {t.shape}")
+    break
+for x,t in test_dataloader:
+    print(f"Shape of test X [BATCH, H]: {x.shape}")
+    print(f"Shape of test T [BATCH, H]: {t.shape}")
+    break
+print("--------------end--------------")
+print()
