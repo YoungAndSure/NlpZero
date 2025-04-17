@@ -25,6 +25,13 @@ def load_data(file_path, seed=1984, add_eos=False):
         print('No file: %s' % file_path)
         return None
 
+    padchar = '_'
+    startchar = '@'
+    endchar = '#'
+    _update_vocab(padchar)
+    _update_vocab(startchar)
+    _update_vocab(endchar)
+
     questions, answers = [], []
     max_question_len = 0
     max_answer_len = 0
@@ -45,20 +52,26 @@ def load_data(file_path, seed=1984, add_eos=False):
                 answers.append(content)
                 max_answer_len = max(max_answer_len, len(content))
 
+    max_question_len += 1 # padchar
+    max_answer_len += 2 # startchar and endchar
+
     # create vocab dict
     for i in range(len(questions)):
         q, a = questions[i], answers[i]
         _update_vocab(q)
         _update_vocab(a)
 
-    # create numpy array
+    # create numpy array, pad is 0
     x = numpy.zeros((len(questions), max_question_len), dtype=int)
     t = numpy.zeros((len(questions), max_answer_len), dtype=int)
 
     for i, sentence in enumerate(questions):
         x[i][0:len(sentence)] = [char_to_id[c] for c in list(sentence)]
     for i, sentence in enumerate(answers):
-        t[i][0:len(sentence)] = [char_to_id[c] for c in list(sentence)]
+        t[i][1:len(sentence) + 1] = [char_to_id[c] for c in list(sentence)]
+        # add startchar and endchar
+        t[i][0] = char_to_id[startchar]
+        t[i][len(sentence) + 1] = char_to_id[endchar]
 
     # shuffle
     indices = numpy.arange(len(x))

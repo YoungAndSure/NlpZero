@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 
 batch_size = 32
 
-data_path = "/home/youngsure/Code/RedGPT/RedGPT-Dataset-V1-CN.json"
+data_path = "../../../RedGPT/RedGPT-Dataset-V1-CN.json"
 train_data = RedgptDataset(data_path, data_type="train", add_eos=True) 
 test_data = RedgptDataset(data_path, data_type="test", add_eos=True)
 vocab_size = train_data.vocab_size()
