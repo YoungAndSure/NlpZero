@@ -12,11 +12,11 @@ class RedgptDataset(Dataset):
     def __init__(self, data_path, data_type='train', add_eos=False):
       (x_train, t_train), (x_test, t_test) = load_data(data_path, add_eos=add_eos)
       if data_type == 'train' :
-         self.xs = x_train
-         self.ts = t_train
+         self.xs = x_train[0:100]
+         self.ts = t_train[0:100]
       else :
-         self.xs = x_test
-         self.ts = t_test
+         self.xs = x_test[0:10]
+         self.ts = t_test[0:10]
       
       self.char_to_id, self.id_to_char = get_vocab()
 

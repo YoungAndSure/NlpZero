@@ -94,29 +94,6 @@ if retrain_and_dump :
         scheduler.step()
 
         avg_loss = total_loss / total_token
-
-        # 测试集计算准确率
-        '''
-        with torch.no_grad() :
-            total_count = 0.0
-            right_count = 0.0
-            for x,t in test_dataloader :
-                x,t = x.to(device),t.to(device)
-                y = model.generate(x, startid, max_answer_len, endid)
-                for i in range(x.shape[0]) :
-                    right_ans = train_data.ids_to_string(t[i][1:].detach().to('cpu').numpy())
-                    predict_ans = train_data.ids_to_string(y[i][1:].detach().to('cpu').numpy())
-                    total_count += 1
-                    right_count += 1 if right_ans == predict_ans else 0
-            right_rate = right_count / total_count
-
-        print("epoch:{}, loss:{:.5f}, right_count:{}, right_rate:{:.5f}".format(epoch, avg_loss, right_count, right_rate))
-        if right_count < last_right_count :
-            right_count_down += 1
-        if right_count_down > 10 :
-            break
-        last_right_count = right_count
-        '''
         print("epoch:{}, loss:{:.5f}".format(epoch, avg_loss))
     save_model(model, file_name)
 else :
