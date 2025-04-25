@@ -67,6 +67,7 @@ batch_size = 2
 encoder_layer = 6
 decoder_layer = 6
 model = Transformer(vocab_size, d_model, nhead, dim_feedforward, encoder_layer, decoder_layer).to(device)
+model = torch.compile(model)
 loss_fn = nn.CrossEntropyLoss(reduction='mean')
 optimizer = Adam(model.parameters(), lr=0.001)
 scheduler = ExponentialLR(optimizer, gamma=0.9)
