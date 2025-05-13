@@ -89,8 +89,8 @@ def ppmi(C, verbose=True, eps=1e-8) :
   
   return M
 
-def create_contexts_target(corpus, window_size=1) :
-  targets = np.array([[target] for target in corpus[window_size:-window_size]])
+def create_contexts_target(corpus, window_size=1, return_numpy=False) :
+  targets = [[target] for target in corpus[window_size:-window_size]]
   contexts = []
 
   for idx in range(window_size, len(corpus) - window_size) :
@@ -100,7 +100,9 @@ def create_contexts_target(corpus, window_size=1) :
         continue
       cs.append(corpus[idx + t])
     contexts.append(cs)
-  return np.array(contexts), targets
+  if return_numpy :
+    return np.array(contexts), np.array(targets)
+  return contexts, targets
 
 def convert_one_hot(input, vec_size) :
   input = np.array(input)
