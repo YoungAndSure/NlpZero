@@ -34,11 +34,11 @@ optimizer.setup(model)
 max_epoch = 10
 for epoch in range(max_epoch) :
   for i in range(len(ori_targets)) :
-    x = Parameter(np.array(ori_contexts[i])[:, np.newaxis])
-    positive = Parameter(np.array([ori_targets[i]]))
+    x = Variable(np.array(ori_contexts[i])[np.newaxis, :])
+    BATCH_SIZE, CONTEXT_SIZE = x.shape
+    positive = Variable(np.array(ori_targets[i])[np.newaxis, :])
     y = model.forward(x, positive)
     loss = sigmoid_cross_entropy_simple(y, np.ones(1, np.int32))
-
     loss.backward()
     optimizer.update()
     print("epoch:{}, loss:{}".format(epoch, loss.data))
