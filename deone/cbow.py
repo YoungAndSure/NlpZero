@@ -36,9 +36,10 @@ for epoch in range(max_epoch) :
   for i in range(len(ori_targets)) :
     x = Variable(np.array(ori_contexts[i])[np.newaxis, :])
     BATCH_SIZE, CONTEXT_SIZE = x.shape
-    positive = Variable(np.array(ori_targets[i])[np.newaxis, :])
-    y = model.forward(x, positive)
-    loss = sigmoid_cross_entropy_simple(y, np.ones(1, np.int32))
+    positive_target = Variable(np.array(ori_targets[i])[np.newaxis, :])
+    y = model.forward(x, positive_target)
+    positive_label = np.ones(1, np.int32)
+    loss = sigmoid_cross_entropy_simple(y, positive_label)
     loss.backward()
     optimizer.update()
     print("epoch:{}, loss:{}".format(epoch, loss.data))
