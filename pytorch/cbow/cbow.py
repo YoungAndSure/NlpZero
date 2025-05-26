@@ -13,6 +13,8 @@ from dataset.easy_data import EasyDataset
 from torch.utils.data import DataLoader
 from torchviz import make_dot
 
+open_graph = False
+
 train_dataset = EasyDataset()
 test_dataset = EasyDataset()
 
@@ -59,7 +61,7 @@ for epoch in range(max_epoch) :
     y = model.forward(inputs, targets)
     loss = loss_fn(y, labels)
 
-    if (first_run) :
+    if (open_graph and first_run) :
       vis_graph = make_dot(y, params=dict(model.named_parameters()))
       vis_graph.render('cbow_model', format='png')  # 输出图像文件
       first_run=False
