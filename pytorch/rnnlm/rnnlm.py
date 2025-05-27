@@ -28,6 +28,7 @@ file_name = "rnnlm.pth" if use_ptb else "hello.pth"
 manual_test_case_size = 10 if use_ptb else 1
 write_monitor=False
 open_manual_test=False
+tag = "non_blocking"
 
 writer = SummaryWriter(log_dir='rnnlm_monitor') if write_monitor else None
 
@@ -106,7 +107,7 @@ class RnnLm(nn.Module):
         self.h_last = None
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model = RnnLm(vocab_size, seq_len).to(device)
+model = RnnLm(vocab_size, seq_len).to(device, non_blocking=True)
 
 # 输入是logits值，目标有两种模式，可以是类别的索引
 loss_fn = nn.CrossEntropyLoss(reduction='mean')
@@ -124,7 +125,7 @@ with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_m
 
         model.reset_state() # follow deepseek's advice, really good
         for x,t in train_dataloader :
-            x,t = x.to(device), t.to(device)
+            x,t = x.to(device, non_blocking=True), t.to(device, non_blocking=True)
             y = model.forward(x)
             if (epoch == 0 and iter == 0) :
                 print(f"input shape: BATCH, DIMENTION :{x.shape}")
@@ -153,8 +154,7 @@ with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_m
         epoch_end = time.perf_counter()
         print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, cost:{:.3f}ms".format(epoch, total_loss / total_token, perplexity, (epoch_end - epoch_start) * 1000))
     save_model(model, file_name)
-prof.export_chrome_trace("rnnlm_profile_maxepoch2.json")
-print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+prof.export_chrome_trace("rnnlm_profile_maxepoch{}_{}.json".format(max_epoch, tag))
 
 recorder.record("train")
 
@@ -167,7 +167,7 @@ with torch.no_grad() :
     total_token = 0.0
     model.reset_state()
     for x,t in test_dataloader :
-        x,t = x.to(device), t.to(device)
+        x,t = x.to(device, non_blocking=True), t.to(device, non_blocking=True)
         y = model.forward(x)
         loss = loss_fn(y.reshape(-1, vocab_size), t.reshape(-1))
 
@@ -194,7 +194,7 @@ with torch.no_grad() :
         ans.append(ids)
 
     x = torch.tensor(np.array(inputs))
-    y = model.forward(x.to(device))
+    y = model.forward(x.to(device, non_blocking=True))
     last_word = y[:,-1,:]
     last_word = nn.Softmax(dim=1)(last_word)
     value, idx = last_word.max(dim=1)
