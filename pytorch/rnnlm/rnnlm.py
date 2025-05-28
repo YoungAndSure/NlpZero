@@ -29,7 +29,7 @@ manual_test_case_size = 10 if use_ptb else 1
 write_monitor=False
 open_manual_test=False
 tag = "num_workers4"
-num_workers = 4
+num_workers = 0
 
 writer = SummaryWriter(log_dir='rnnlm_monitor') if write_monitor else None
 
@@ -116,8 +116,8 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 recorder.record("prepare")
 
-with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
-#if retrain_and_dump :
+#with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True) as prof :
+if retrain_and_dump :
     for epoch in range(max_epoch) :
         epoch_start = time.perf_counter()
         total_loss = 0.0
@@ -155,7 +155,7 @@ with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_m
         epoch_end = time.perf_counter()
         print("epoch:{}, loss:{:.3f}, perplexity:{:.3f}, cost:{:.3f}ms".format(epoch, total_loss / total_token, perplexity, (epoch_end - epoch_start) * 1000))
     save_model(model, file_name)
-prof.export_chrome_trace("rnnlm_profile_maxepoch{}_{}.json".format(max_epoch, tag))
+#prof.export_chrome_trace("rnnlm_profile_maxepoch{}_{}.json".format(max_epoch, tag))
 
 recorder.record("train")
 

@@ -1,4 +1,4 @@
-## transformer
+## rnn
 
 ### base:
 dataset : 6.684 ms  
@@ -19,12 +19,18 @@ total : 11823.748 ms
 aten::to目测并没有变短  
 
 ### num_works=4:
-dataset : 6.616 ms
-dataload : 0.159 ms
-prepare : 835.391 ms
-train : 10983.421 ms
-test : 337.802 ms
-total : 12163.389 ms
+dataset : 6.616 ms  
+dataload : 0.159 ms  
+prepare : 835.391 ms  
+train : 10983.421 ms  
+test : 337.802 ms  
+total : 12163.389 ms  
+
+出现了奇怪的现象。  
+num_workers分别取值0,4,8，耗时不降反增。  
+用官方测例实现一样的效果。  
+观察官方测例(1_num_worker.py)的perf图，0时每次DataLoader耗时30+ms，4时反倒增加到100+ms,8时降低到5ms  
+不理解为什么
 
 ### result:
 模型准备耗时+66.9%  
