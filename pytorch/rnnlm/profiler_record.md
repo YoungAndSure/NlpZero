@@ -16,7 +16,15 @@ train : 10862.478 ms
 test : 187.231 ms  
 total : 11823.748 ms  
 
-aten::to目测并没有变短
+aten::to目测并没有变短  
+
+### num_works=4:
+dataset : 6.616 ms
+dataload : 0.159 ms
+prepare : 835.391 ms
+train : 10983.421 ms
+test : 337.802 ms
+total : 12163.389 ms
 
 ### result:
 模型准备耗时+66.9%  

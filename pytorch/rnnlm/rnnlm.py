@@ -28,7 +28,8 @@ file_name = "rnnlm.pth" if use_ptb else "hello.pth"
 manual_test_case_size = 10 if use_ptb else 1
 write_monitor=False
 open_manual_test=False
-tag = "non_blocking"
+tag = "num_workers4"
+num_workers = 4
 
 writer = SummaryWriter(log_dir='rnnlm_monitor') if write_monitor else None
 
@@ -47,10 +48,10 @@ recorder.record("dataset")
 # Create data loaders.
 train_batch_sampler = SequentialBatchSampler(train_data, batch_size)
 train_dataloader = DataLoader(train_data,
-                              batch_sampler=train_batch_sampler)
+                              batch_sampler=train_batch_sampler, num_workers=num_workers)
 test_batch_sampler = SequentialBatchSampler(test_data, batch_size)
 test_dataloader = DataLoader(test_data,
-                             batch_sampler=test_batch_sampler)
+                             batch_sampler=test_batch_sampler, num_workers=num_workers)
 
 recorder.record("dataload")
 
