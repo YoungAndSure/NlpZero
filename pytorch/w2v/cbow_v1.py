@@ -51,6 +51,21 @@ class CbowModel(nn.Module):
     loss = -(center_context_mul - vocab_context_logsumexp)
     return loss
 
+  def predict(self, contexts) :
+    BATCH,WINDOW_SIZE = contexts.shape
+    BATCH,_ = center.shape
+    context_emb = self.in_emb(contexts)
+    BATCH,WINDOW_SIZE,HIDDEN_SIZE = context_emb.shape
+
+    context_mean = torch.mean(context_emb, dim=1, keepdim=True)
+    BATCH,ONE,HIDDEN_SIZE = context_mean.shape
+
+    vocab_words_emb = self.out_emb(torch.arange(self.vocab_size).to(device))
+    VOCAB_SIZE,HIDDEN_SIZE = vocab_words_emb.shape
+    vocab_context_mul =  torch.matmul(context_mean, vocab_words_emb.t())
+    y = torch.argmax(vocab_context_mul.squeeze(1), dim=1, keepdim=True)
+    return y
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 vocab_size = train_dataset.vocab_size()
@@ -87,3 +102,11 @@ for epoch in range(max_epoch) :
     total_sample += center.shape[0]
 
   print("epoch:{}, avg_loss:{}".format(epoch, total_loss/total_sample))
+
+contexts = [['i','hello'],['i','goodbye']]
+for context in contexts :
+  ids = torch.tensor(train_dataset.to_ids(context))[torch.newaxis].to(device)
+  center_id = model.predict(ids)
+  for i in range(center_id.shape[0]) :
+    center_word = train_dataset.to_word(center_id[i][0].item())
+  print(context, center_word)

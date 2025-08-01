@@ -25,7 +25,8 @@ class HelloW2vDataset(Dataset):
 
     def get_dict(self) :
         return self.word2id, self.id2word
-    
+    def to_word(self, id) :
+      return self.id2word[id]
     def to_words(self, ids) :
       words = []
       for id in ids :
