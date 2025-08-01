@@ -2,39 +2,40 @@
 from torch.utils.data import Dataset
 from common.util import *
 
-class EasyDataset(Dataset):
-    def __init__(self, window_size=1, enable_unigram_sampler=True):
-      text = 'You say goodbye and I say hello.'
-      self.corpus, word2id, id2word = preprocess(text)
-      contexts, targets = create_contexts_target(corpus=self.corpus, window_size=window_size)
-      self.contexts, self.targets = np.array(contexts), np.array(targets)
-      self.enable_unigram_sampler = enable_unigram_sampler
+class HelloW2vDataset(Dataset):
+    def __init__(self, window=1):
+      text = 'You say goodbye and I say hello'
+      corpus, self.word2id, self.id2word = preprocess(text)
+      self.corpus = np.array(corpus)
+      self.window=window
 
-      # 初始化负样本采样
-      if self.enable_unigram_sampler :
-        self.unigram_sampler = UnigramSampler(self.corpus, 0.75, 5)
-    
     def __getitem__(self, index):
-      input = self.contexts[index, :]
-      positive_targets = self.targets[index, :]
-      positive_labels = np.ones_like(positive_targets, dtype=np.float32)
-
-      if self.enable_unigram_sampler :
-        negative_targets = self.unigram_sampler.get_negative_sample(positive_targets)
-        negative_labels = np.zeros_like(negative_targets, dtype=np.float32)
-        targets = np.concatenate((positive_targets[np.newaxis, :], negative_targets), axis=1)
-        labels = np.concatenate((positive_labels[np.newaxis, :], negative_labels), axis=1)
-      else :
-        targets = positive_targets
-        labels = positive_labels
-
-      return input, targets.squeeze(), labels
+      index = index + self.window
+      center = self.corpus[index][np.newaxis]
+      left_contexts = self.corpus[index-self.window : index]
+      right_contexts = self.corpus[index + 1 :index+self.window+1]
+      contexts = np.concatenate((left_contexts,right_contexts))
+      return contexts, center
     
     def __len__(self):
-        return self.targets.shape[0]
+        return len(self.corpus) - 2 * self.window
 
     def vocab_size(self) :
        return len(self.corpus)
+
+    def get_dict(self) :
+        return self.word2id, self.id2word
+    
+    def to_words(self, ids) :
+      words = []
+      for id in ids :
+        words.append(self.id2word[id])
+      return words
+    def to_ids(self, words) :
+      ids = []
+      for word in words :
+        ids.append(self.word2id[word])
+      return np.array(ids)
 
 class HelloDataset(Dataset):
     def __init__(self, seq_len=6):
