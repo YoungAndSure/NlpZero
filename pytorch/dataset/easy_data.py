@@ -3,18 +3,21 @@ from torch.utils.data import Dataset
 from common.util import *
 
 class HelloW2vDataset(Dataset):
-    def __init__(self, window=1):
+    def __init__(self, window=1, model="cbow", neg=False):
       text = 'You say goodbye and I say hello'
       corpus, self.word2id, self.id2word = preprocess(text)
       self.corpus = np.array(corpus)
       self.window=window
+      self.model = model
+      self.neg = neg
 
     def __getitem__(self, index):
       index = index + self.window
       left_contexts = self.corpus[index-self.window : index]
       right_contexts = self.corpus[index + 1 :index+self.window+1]
-      contexts = np.concatenate((left_contexts,right_contexts))
-      target = self.corpus[index]
+      if self.model == "cbow" :
+        contexts = np.concatenate((left_contexts,right_contexts))
+        target = self.corpus[index]
       return contexts, target
     
     def __len__(self):
