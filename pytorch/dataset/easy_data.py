@@ -11,11 +11,11 @@ class HelloW2vDataset(Dataset):
 
     def __getitem__(self, index):
       index = index + self.window
-      center = self.corpus[index][np.newaxis]
       left_contexts = self.corpus[index-self.window : index]
       right_contexts = self.corpus[index + 1 :index+self.window+1]
       contexts = np.concatenate((left_contexts,right_contexts))
-      return contexts, center
+      target = self.corpus[index]
+      return contexts, target
     
     def __len__(self):
         return len(self.corpus) - 2 * self.window

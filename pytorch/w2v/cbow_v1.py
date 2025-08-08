@@ -13,7 +13,7 @@ from dataset.easy_data import HelloW2vDataset
 from torch.utils.data import DataLoader
 from torchviz import make_dot
 
-open_graph = True
+open_graph = False
 
 train_dataset = HelloW2vDataset()
 test_dataset = HelloW2vDataset()
