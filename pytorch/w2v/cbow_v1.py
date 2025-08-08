@@ -32,10 +32,10 @@ class CbowModel(nn.Module):
 
   def forward(self, contexts, center):
     BATCH,WINDOW_SIZE = contexts.shape
-    BATCH,_ = center.shape
+    BATCH = center.shape
     context_emb = self.in_emb(contexts)
     BATCH,WINDOW_SIZE,HIDDEN_SIZE = context_emb.shape
-    center_emb = self.out_emb(center)
+    center_emb = self.out_emb(center[:,torch.newaxis])
     BATCH,_,HIDDEN_SIZE = center_emb.shape
 
     context_mean = torch.mean(context_emb, dim=1, keepdim=True)
@@ -53,7 +53,6 @@ class CbowModel(nn.Module):
 
   def predict(self, contexts) :
     BATCH,WINDOW_SIZE = contexts.shape
-    BATCH,_ = center.shape
     context_emb = self.in_emb(contexts)
     BATCH,WINDOW_SIZE,HIDDEN_SIZE = context_emb.shape
 
