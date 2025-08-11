@@ -40,6 +40,46 @@ class HelloW2vDataset(Dataset):
         ids.append(self.word2id[word])
       return np.array(ids)
 
+class HelloW2vGenerateDataset(Dataset):
+    def __init__(self, window=2):
+      text = 'You say goodbye and I say hello'
+      corpus, self.word2id, self.id2word = preprocess(text)
+      self.corpus = np.array(corpus)
+      self.window=window
+      self.text = self.to_words(self.corpus)
+
+    def __getitem__(self, index):
+      index = index + self.window
+      contexts = None
+      for i in range(self.window) :
+        context = self.corpus[index-1-i][np.newaxis]
+        contexts = np.concatenate((contexts,context)) if contexts is not None else context
+      target = self.corpus[index]
+      return contexts, target
+    
+    def __len__(self):
+        return len(self.corpus) - self.window
+
+    def vocab_size(self) :
+       return len(self.corpus)
+
+    def get_dict(self) :
+        return self.word2id, self.id2word
+    def to_word(self, id) :
+      return self.id2word[id]
+    def to_words(self, ids) :
+      words = []
+      for id in ids :
+        words.append(self.id2word[id])
+      return words
+    def to_ids(self, words) :
+      ids = []
+      for word in words :
+        ids.append(self.word2id[word])
+      return np.array(ids)
+
+
+
 class HelloW2vSkipGramDataset(Dataset):
     def __init__(self, window=1):
       self.text = 'You say goodbye and I say hello'
