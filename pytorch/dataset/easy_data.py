@@ -3,13 +3,50 @@ from torch.utils.data import Dataset
 from common.util import *
 
 class HelloW2vDataset(Dataset):
-    def __init__(self, window=1, model="cbow", neg=False):
+    def __init__(self, window=1, model="cbow"):
       text = 'You say goodbye and I say hello'
       corpus, self.word2id, self.id2word = preprocess(text)
       self.corpus = np.array(corpus)
       self.window=window
       self.model = model
-      self.neg = neg
+
+    def __getitem__(self, index):
+      index = index + self.window
+      left_contexts = self.corpus[index-self.window : index]
+      right_contexts = self.corpus[index + 1 :index+self.window+1]
+      if self.model == "cbow" :
+        contexts = np.concatenate((left_contexts,right_contexts))
+        target = self.corpus[index]
+      return contexts, target
+    
+    def __len__(self):
+        return len(self.corpus) - 2 * self.window
+
+    def vocab_size(self) :
+       return len(self.corpus)
+
+    def get_dict(self) :
+        return self.word2id, self.id2word
+    def to_word(self, id) :
+      return self.id2word[id]
+    def to_words(self, ids) :
+      words = []
+      for id in ids :
+        words.append(self.id2word[id])
+      return words
+    def to_ids(self, words) :
+      ids = []
+      for word in words :
+        ids.append(self.word2id[word])
+      return np.array(ids)
+
+class HelloW2vWithNegDataset(Dataset):
+    def __init__(self, window=1, model="cbow"):
+      text = 'You say goodbye and I say hello'
+      corpus, self.word2id, self.id2word = preprocess(text)
+      self.corpus = np.array(corpus)
+      self.window=window
+      self.model = model
 
     def __getitem__(self, index):
       index = index + self.window
