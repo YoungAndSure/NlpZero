@@ -42,7 +42,8 @@ class HelloW2vDataset(Dataset):
 
 class HelloW2vGenerateDataset(Dataset):
     def __init__(self, window=2):
-      text = 'You say goodbye and I say hello'
+      #text = 'You say goodbye and I say hello'
+      text = '听 我 说 谢 谢 你 因 为 有 你 温 暖 了 四 季'
       corpus, self.word2id, self.id2word = preprocess(text)
       self.corpus = np.array(corpus)
       self.window=window
