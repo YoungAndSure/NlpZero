@@ -127,27 +127,36 @@ class HelloW2vSkipGramDataset(Dataset):
        return self.text
 
 class HelloW2vWithNegDataset(Dataset):
-    def __init__(self, window=1, model="cbow"):
-      text = 'You say goodbye and I say hello'
-      corpus, self.word2id, self.id2word = preprocess(text)
+    def __init__(self, window=1, k=2):
+      self.text = 'You say goodbye and I say hello'
+      corpus, self.word2id, self.id2word = preprocess(self.text)
       self.corpus = np.array(corpus)
       self.window=window
-      self.model = model
+      self.unigram_sampler = UnigramSampler(corpus, 0.75, k)
+
+      self.pairs = []
+      for idx in range(self.window, len(self.corpus) - self.window):
+        center = self.corpus[idx]
+        # 左窗口
+        for i in range(idx - self.window, idx):
+            self.pairs.append((center, self.corpus[i], np.array(1.0)))
+            negs = self.unigram_sampler.get_negative_sample(self.corpus[np.newaxis, i])
+            for j in range(negs.shape[0]):
+              self.pairs.append((center, negs[0][j], np.array(0.0)))
+        # 右窗口
+        for i in range(idx + 1, idx + self.window + 1):
+            self.pairs.append((center, self.corpus[i], np.array(1.0)))
+            for j in range(negs[0].shape[0]):
+              self.pairs.append((center, negs[0][j], np.array(0.0)))
 
     def __getitem__(self, index):
-      index = index + self.window
-      left_contexts = self.corpus[index-self.window : index]
-      right_contexts = self.corpus[index + 1 :index+self.window+1]
-      if self.model == "cbow" :
-        contexts = np.concatenate((left_contexts,right_contexts))
-        target = self.corpus[index]
-      return contexts, target
+      return self.pairs[index]
     
     def __len__(self):
-        return len(self.corpus) - 2 * self.window
+      return len(self.pairs)
 
     def vocab_size(self) :
-       return len(self.corpus)
+       return len(self.word2id)
 
     def get_dict(self) :
         return self.word2id, self.id2word
@@ -159,10 +168,14 @@ class HelloW2vWithNegDataset(Dataset):
         words.append(self.id2word[id])
       return words
     def to_ids(self, words) :
+      if isinstance(words, str) :
+        return self.word2id[words]
       ids = []
       for word in words :
         ids.append(self.word2id[word])
       return np.array(ids)
+    def get_text(self) :
+       return self.text
 
 class HelloDataset(Dataset):
     def __init__(self, seq_len=6):
