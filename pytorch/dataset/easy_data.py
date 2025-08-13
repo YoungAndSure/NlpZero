@@ -23,7 +23,7 @@ class HelloW2vDataset(Dataset):
         return len(self.corpus) - 2 * self.window
 
     def vocab_size(self) :
-       return len(self.corpus)
+       return len(self.word2id)
 
     def get_dict(self) :
         return self.word2id, self.id2word
@@ -62,7 +62,7 @@ class HelloW2vGenerateDataset(Dataset):
         return len(self.corpus) - self.window
 
     def vocab_size(self) :
-       return len(self.corpus)
+       return len(self.word2id)
 
     def get_dict(self) :
         return self.word2id, self.id2word
@@ -78,8 +78,6 @@ class HelloW2vGenerateDataset(Dataset):
       for word in words :
         ids.append(self.word2id[word])
       return np.array(ids)
-
-
 
 class HelloW2vSkipGramDataset(Dataset):
     def __init__(self, window=1):
@@ -105,7 +103,7 @@ class HelloW2vSkipGramDataset(Dataset):
       return len(self.pairs)
 
     def vocab_size(self) :
-       return len(self.corpus)
+       return len(self.word2id)
 
     def get_dict(self) :
         return self.word2id, self.id2word
@@ -195,7 +193,7 @@ class HelloDataset(Dataset):
         return 1
 
     def vocab_size(self) :
-       return len(self.corpus)
+       return len(self.word2id)
 
     def get_dict(self) :
         return self.word2id, self.id2word
