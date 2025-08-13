@@ -141,13 +141,13 @@ class HelloW2vWithNegDataset(Dataset):
         for i in range(idx - self.window, idx):
             self.pairs.append((center, self.corpus[i], np.array(1.0)))
             negs = self.unigram_sampler.get_negative_sample(self.corpus[np.newaxis, i])
-            for j in range(negs.shape[0]):
-              self.pairs.append((center, negs[0][j], np.array(0.0)))
+            for j in range(k):
+              self.pairs.append((center, negs[0][j], np.array(-1.0)))
         # 右窗口
         for i in range(idx + 1, idx + self.window + 1):
             self.pairs.append((center, self.corpus[i], np.array(1.0)))
-            for j in range(negs[0].shape[0]):
-              self.pairs.append((center, negs[0][j], np.array(0.0)))
+            for j in range(k):
+              self.pairs.append((center, negs[0][j], np.array(-1.0)))
 
     def __getitem__(self, index):
       return self.pairs[index]

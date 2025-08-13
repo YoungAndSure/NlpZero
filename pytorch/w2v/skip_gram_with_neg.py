@@ -40,10 +40,8 @@ class SkipGramModel(nn.Module):
 
     target_emb = self.out_emb(target)
 
-    y = torch.matmul(center_emb, target_emb.T)
-    for i in range(BATCH) :
-      if label[i] == 0.0 :
-        y[i] = - y[i]
+    y = torch.sum(center_emb * target_emb, dim=1)
+    y = y * label
 
     return y
 
