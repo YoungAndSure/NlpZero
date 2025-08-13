@@ -40,6 +40,8 @@ class SkipGramModel(nn.Module):
 
     target_emb = self.out_emb(target)
 
+    # 最开始用torch.maxmul(center_emb, target_emb)，
+    # 这样shape是matmul((2,10),(10,2))，得出(2,2)，第一个batch的embedding和第二个batch的embedding相乘了
     y = torch.sum(center_emb * target_emb, dim=1)
     y = y * label
 
